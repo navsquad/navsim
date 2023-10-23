@@ -13,8 +13,10 @@ constellations:
   emitters:
     gps:
       signal: gpsl1ca
+      js: 30.0
     iridium-next:
       signal: freedom
+      js: 0.0
 
 errors:
   ionosphere: tec_map

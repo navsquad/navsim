@@ -34,6 +34,7 @@ class ErrorConfiguration:
     ionosphere: str = "klobuchar"
     troposphere: str = "saastamoinen"
     rx_clock: str = "low_quality_tcxo"
+    js: float = 0.0
 
 
 @dataclass(frozen=True)

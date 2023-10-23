@@ -12,12 +12,14 @@ from abc import ABC, abstractmethod
 
 from navtools.emitters.satellite import SatelliteEmitters
 from navtools.signals import get_signal_properties
+from navtools.signals.types import SatelliteSignal
 from navtools.error_models import (
     get_ionosphere_model,
     get_troposphere_model,
     get_clock_allan_variance_values,
     compute_clock_states,
 )
+from navtools.error_models.signal import compute_carrier_to_noise
 from navtools.error_models.atmosphere import (
     IonosphereModelParameters,
     TroposphereModelParameters,
@@ -44,6 +46,13 @@ class ReceiverTruthStates:
 class Observables:
     pseudorange: float
     pseudorange_rate: float
+    cn0: float
+
+
+@dataclass(frozen=True)
+class Signals:
+    properties: SatelliteSignal
+    js: float
 
 
 # Simulation Factory
@@ -191,8 +200,9 @@ class MeasurementSimulation(Simulation):
             constellations=configuration.emitters, mask_angle=configuration.mask_angle
         )
         self.__signals = {
-            constellation.casefold(): get_signal_properties(
-                signal_name=properties.get("signal")
+            constellation.casefold(): Signals(
+                properties=get_signal_properties(signal_name=properties.get("signal")),
+                js=properties.get("js"),
             )
             for constellation, properties in configuration.emitters.items()
         }
@@ -203,6 +213,7 @@ class MeasurementSimulation(Simulation):
         self.__rx_clock = get_clock_allan_variance_values(
             clock_name=configuration.rx_clock
         )
+        self.__js = configuration.js
 
     def __simulate_receiver_states(self, rx_pos: np.array, rx_vel: np.array):
         if rx_pos.size == 3:  # tiles rx_pos and rx_vel if static
@@ -260,7 +271,7 @@ class MeasurementSimulation(Simulation):
                 emitter_pos=state.pos,
                 az=state.az,
                 el=state.el,
-                fcarrier=signal.fcarrier,
+                fcarrier=signal.properties.fcarrier,
             )
             tropo_parameters = TroposphereModelParameters(rx_pos=pos, el=state.el)
 
@@ -289,12 +300,21 @@ class MeasurementSimulation(Simulation):
         observables = defaultdict()
 
         for emitter, state in emitters.items():
+            signal = self.__signals.get(state.constellation.casefold())
+
             # observables do not include emitter clock terms
             pseudorange = state.range + delays[emitter] + clock_bias
             pseudorange_rate = state.range_rate + drifts[emitter] + clock_drift
+            cn0 = compute_carrier_to_noise(
+                range=state.range,
+                transmit_power=signal.properties.transmit_power,
+                transmit_antenna_gain=signal.properties.transmit_antenna_gain,
+                fcarrier=signal.properties.fcarrier,
+                js=signal.js,
+            )
 
             emitter_observables = Observables(
-                pseudorange=pseudorange, pseudorange_rate=pseudorange_rate
+                pseudorange=pseudorange, pseudorange_rate=pseudorange_rate, cn0=cn0
             )
             observables[emitter] = emitter_observables
 

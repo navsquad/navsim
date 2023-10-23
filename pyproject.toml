@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "navsim"
+version = "0.1.0"
+description = "a Python satellite navigation simulator"
+authors = ["Tanner Koza <kozatanner@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.12"
+navtools = {path = "libs/navtools.py", develop = true}
+pyyaml = "^6.0.1"
+dacite = "^1.8.1"
+tables = "^3.9.1"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.10.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

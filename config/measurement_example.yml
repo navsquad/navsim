@@ -1,0 +1,23 @@
+type: measurement
+
+time:
+  duration: 3600.0 # [s]
+  fsim: 1 # [Hz]
+  year: 2023
+  month: 10
+  day: 14
+  second: 18
+
+constellations:
+  mask_angle: 10.0 # [deg]
+  emitters:
+    gps:
+      signal: gpsl1ca
+    iridium-next:
+      signal: freedom
+
+errors:
+  ionosphere: tec_map
+  troposphere: saastamoinen
+  rx_clock: low_quality_tcxo
+

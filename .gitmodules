@@ -1,0 +1,4 @@
+[submodule "libs/navtools.py"]
+	path = libs/navtools.py
+	url = https://github.com/tannerkoza/navtools.py.git
+	branch = main

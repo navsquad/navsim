@@ -34,7 +34,7 @@
 
 ***navsim*** was created to provide versatile simulation tools that can be used to facilitate positioning, navigation, and timing (PNT) research in Python. 
 
-We are still very much in development as features are being added on an as-needed basis. Feel free to request new features as an [issue](https://github.com/tannerkoza/navsim/issues/new) or see [Contributing](#✍️-contributing) for instructions on adding your own tools.
+We are still very much in development as features are being added on an as-needed basis. Feel free to request new features as an [issue](https://github.com/tannerkoza/navsim/issues/new) or see [Contributing](#contributing) for instructions on adding your own tools.
 
 ## 🏁 Getting Started <a name = "getting-started"></a>
 
@@ -57,7 +57,7 @@ git clone --recurse-submodules https://github.com/tannerkoza/navsim.git
 
 2. Install in a virtual environment or base Python (not recommended) using `pip`.
 ```
-pip install navtools.py/
+pip install navsim/
 ```
 
 It's that simple! If you find yourself having trouble, please submit an [issue](https://github.com/tannerkoza/navsim/issues/new).

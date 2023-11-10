@@ -10,17 +10,17 @@ from collections import defaultdict
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
-from navtools.emitters.satellite import SatelliteEmitters
-from navtools.signals import get_signal_properties
-from navtools.signals.types import SatelliteSignal
-from navtools.error_models import (
+from navsim.emitters import SatelliteEmitters
+from navtools import get_signal_properties
+from navtools.signals.signals import SatelliteSignal
+from navsim.error_models import (
     get_ionosphere_model,
     get_troposphere_model,
     get_clock_allan_variance_values,
     compute_clock_states,
 )
-from navtools.error_models.signal import compute_carrier_to_noise
-from navtools.error_models.atmosphere import (
+from navsim.error_models.signal import compute_carrier_to_noise
+from navsim.error_models.atmosphere import (
     IonosphereModelParameters,
     TroposphereModelParameters,
 )
@@ -87,19 +87,19 @@ class MeasurementSimulation(Simulation):
 
     @property
     def emitter_states(self):
-        print("[navsim]: getting emitter truth states...")
+        print("[navsim] getting emitter truth states...")
 
         return self.__emitter_states
 
     @property
     def rx_states(self):
-        print("[navsim]: getting receiver truth states...")
+        print("[navsim] getting receiver truth states...")
 
         return self.__rx_states
 
     @property
     def observables(self):
-        print("[navsim]: getting simulated observables...")
+        print("[navsim] getting simulated observables...")
 
         return self.__observables
 
@@ -117,7 +117,7 @@ class MeasurementSimulation(Simulation):
         self.__rx_states = self.__simulate_receiver_states(rx_pos=rx_pos, rx_vel=rx_vel)
         self.__emitter_states = self.__simulate_emitters(rx_pos=rx_pos, rx_vel=rx_vel)
 
-        description = "[navsim]: simulating observables"
+        description = "[navsim] simulating observables"
         for period, emitters in tqdm(
             enumerate(self.__emitter_states), total=self.__nperiods, desc=description
         ):
@@ -134,7 +134,7 @@ class MeasurementSimulation(Simulation):
 
             self.__observables.append(observables)
 
-        print("[navsim]: simulation complete!")
+        print("[navsim] measurement simulation complete!")
 
     def to_hdf(self, output_dir_path: str):
         output_path = pl.Path(output_dir_path) / self.__output_file_stem
@@ -152,7 +152,7 @@ class MeasurementSimulation(Simulation):
             output_path.with_suffix(".h5"), key="observables", mode="a"
         )
 
-        print(f"[navsim]: exported results to {self.__output_file_stem}.h5")
+        print(f"[navsim] exported results to {self.__output_file_stem}.h5")
 
     def to_mat(self, output_dir_path: str):
         output_path = pl.Path(output_dir_path) / self.__output_file_stem
@@ -173,7 +173,7 @@ class MeasurementSimulation(Simulation):
             do_compression=True,
         )
 
-        print(f"[navsim]: exported results to {self.__output_file_stem}.mat")
+        print(f"[navsim] exported results to {self.__output_file_stem}.mat")
 
     def __init_time(self, configuration: TimeConfiguration):
         self.__initial_time = datetime(
@@ -249,18 +249,18 @@ class MeasurementSimulation(Simulation):
         drifts = defaultdict()
 
         # provides initial delay values to calculate drift
-        if not hasattr(self, "__iono_delay"):
-            self.__iono_delay = {emitter: 0.0 for emitter in emitters}
+        if not hasattr(self, "_iono_delay"):
+            self._iono_delay = {emitter: 0.0 for emitter in emitters}
 
-        if not hasattr(self, "__tropo_delay"):
-            self.__tropo_delay = {emitter: 0.0 for emitter in emitters}
+        if not hasattr(self, "_tropo_delay"):
+            self._tropo_delay = {emitter: 0.0 for emitter in emitters}
 
         # removes exited and adds new emitters in view
         self.__update_emitters_in_period(
-            target_emitters=self.__iono_delay, updated_emitters=emitters
+            target_emitters=self._iono_delay, updated_emitters=emitters
         )
         self.__update_emitters_in_period(
-            target_emitters=self.__tropo_delay, updated_emitters=emitters
+            target_emitters=self._tropo_delay, updated_emitters=emitters
         )
 
         for emitter, state in emitters.items():
@@ -278,11 +278,11 @@ class MeasurementSimulation(Simulation):
             new_iono_delay = self.__ionosphere.get_delay(params=iono_parameters)
             new_tropo_delay = self.__troposphere.get_delay(params=tropo_parameters)
 
-            iono_drift = (new_iono_delay - self.__iono_delay[emitter]) / self.__tsim
-            tropo_drift = (new_tropo_delay - self.__tropo_delay[emitter]) / self.__tsim
+            iono_drift = (new_iono_delay - self._iono_delay[emitter]) / self.__tsim
+            tropo_drift = (new_tropo_delay - self._tropo_delay[emitter]) / self.__tsim
 
-            self.__iono_delay[emitter] = new_iono_delay
-            self.__tropo_delay[emitter] = new_tropo_delay
+            self._iono_delay[emitter] = new_iono_delay
+            self._tropo_delay[emitter] = new_tropo_delay
 
             delays[emitter] = new_iono_delay + new_tropo_delay
             drifts[emitter] = -iono_drift + tropo_drift

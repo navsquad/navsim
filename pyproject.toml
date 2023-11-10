@@ -1,20 +1,25 @@
 [tool.poetry]
 name = "navsim"
-version = "0.1.0"
-description = "a Python satellite navigation simulator"
+version = "0.0.1"
+description = "a python satellite navigation simulator package"
 authors = ["Tanner Koza <kozatanner@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.12"
-navtools = {path = "libs/navtools.py", develop = true}
+python = ">=3.10,<3.13"
+navtools = {git = "https://github.com/tannerkoza/navtools.py.git", develop = true}
+laika = {git = "https://github.com/tannerkoza/laika.git", develop = true}
 pyyaml = "^6.0.1"
 dacite = "^1.8.1"
+pandas = "2.1.1"
+skyfield = "^1.46"
+atomicwrites = "^1.4.1"
+sympy = "^1.12"
 tables = "^3.9.1"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.10.0"
+black = "^23.11.0"
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,13 +1,22 @@
+import os
 import yaml
-import dacite as dc
 import inspect
-from dataclasses import dataclass
+import dacite as dc
 
-from navtools.io import tab_complete_input
+from dataclasses import dataclass
+from pathlib import Path
+from tkinter import filedialog as fd
+
 from navsim.exceptions import (
     InvalidConfigurationFormatting,
     EmptyRequiredConfigurationField,
 )
+
+try:
+    is_readline_available = True
+    import readline as rl
+except ImportError:
+    is_readline_available = False
 
 
 # Configuration Data Classes
@@ -46,11 +55,20 @@ class SimulationConfiguration:
 
 # Configuration Creation
 def get_configuration(configuration_path: str) -> SimulationConfiguration:
-    config_file_name = tab_complete_input(
-        directory_path=configuration_path,
-        prompt_string="[navsim] select a simulation configuration: ",
-    )
-    config_file_path = configuration_path / config_file_name
+    prompt_string = "[navsim] select a simulation configuration: "
+    if is_readline_available:
+        config_file_name = select_file(
+            directory_path=configuration_path,
+            prompt_string=prompt_string,
+        )
+        config_file_path = configuration_path / config_file_name
+    else:
+        filetypes = (("yaml", "*.yaml"), ("yaml", "*.yml*"))
+        config_file_path = fd.askopenfilename(
+            initialdir=configuration_path,
+            title=prompt_string,
+            filetypes=filetypes,
+        )
 
     try:
         with open(config_file_path, "r") as config_file:
@@ -81,3 +99,16 @@ def get_configuration(configuration_path: str) -> SimulationConfiguration:
         raise EmptyRequiredConfigurationField(
             class_type=class_type, field_name=exc.field_path
         ) from exc
+
+
+def select_file(directory_path: str | Path, prompt_string="select a file: "):
+    if type(directory_path) is str:
+        directory_path = Path(directory_path)
+
+    os.chdir(directory_path)
+    rl.set_completer_delims(" \t\n=")
+    rl.parse_and_bind("tab: complete")
+
+    file_name = input(prompt_string)
+
+    return file_name

@@ -1,7 +1,7 @@
 import numpy as np
 
 import navsim as ns
-from navsim import CONFIG_PATH, DATA_PATH
+from paths import CONFIG_PATH, DATA_PATH
 
 rx_pos = np.array([423756, -5361363, 3417705])
 

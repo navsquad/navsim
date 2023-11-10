@@ -1,4 +1,4 @@
 from .config import *
 from .exceptions import *
-from .paths import *
+from ..scripts.paths import *
 from .simulation import *

@@ -213,7 +213,6 @@ class MeasurementSimulation(Simulation):
         self.__rx_clock = get_clock_allan_variance_values(
             clock_name=configuration.rx_clock
         )
-        self.__js = configuration.js
 
     def __simulate_receiver_states(self, rx_pos: np.array, rx_vel: np.array):
         if rx_pos.size == 3:  # tiles rx_pos and rx_vel if static

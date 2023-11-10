@@ -49,7 +49,7 @@ Python **3.9-3.12** is required. We are currently working to make the package us
 1. Clone ***navsim***.
 
 ```shell
-git clone --recurse-submodules https://github.com/tannerkoza/navsim.git
+git clone https://github.com/tannerkoza/navsim.git
 ```
 
 **Note:** The `--recurse-submodules` flag is currently necessary to use [navtools.py](https://github.com/tannerkoza/navtools.py.git) and [laika](https://github.com/tannerkoza/laika.git) as dependencies.

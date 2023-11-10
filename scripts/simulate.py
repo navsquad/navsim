@@ -1,7 +1,11 @@
 import numpy as np
-
 import navsim as ns
-from paths import CONFIG_PATH, DATA_PATH
+
+from pathlib import Path
+
+PROJECT_PATH = Path(__file__).parents[1]
+CONFIG_PATH = PROJECT_PATH / "config"
+DATA_PATH = PROJECT_PATH / "data"
 
 rx_pos = np.array([423756, -5361363, 3417705])
 

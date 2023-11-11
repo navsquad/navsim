@@ -17,6 +17,7 @@ skyfield = "^1.46"
 atomicwrites = "^1.4.1"
 sympy = "^1.12"
 tables = "^3.9.1"
+pyvista = "^0.42.3"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.11.0"

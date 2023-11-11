@@ -303,14 +303,17 @@ class SatelliteEmitters:
                 continue
 
             symbol = "".join([i for i in emitter_id if i.isalpha()])
-            if symbol in self._laika_constellations.values():
-                symbol_index = list(self._laika_constellations.values()).index(symbol)
-                constellation = list(self._laika_constellations.keys())[symbol_index]
-            else:
-                symbol_index = list(self._skyfield_constellations.values()).index(
-                    symbol
-                )
-                constellation = list(self._skyfield_constellations.keys())[symbol_index]
+            try:
+                if symbol in self._laika_constellations.values():
+                    symbol_index = list(self._laika_constellations.values()).index(symbol)
+                    constellation = list(self._laika_constellations.keys())[symbol_index]
+                else:
+                    symbol_index = list(self._skyfield_constellations.values()).index(
+                        symbol
+                    )
+                    constellation = list(self._skyfield_constellations.keys())[symbol_index]
+            except:
+                continue
 
             range, unit_vector = compute_range_and_unit_vector(
                 rx_pos=self._rx_pos, emitter_pos=emitter_pos

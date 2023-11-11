@@ -52,9 +52,6 @@ Python **3.9-3.12** is required. We are currently working to make the package us
 git clone https://github.com/tannerkoza/navsim.git
 ```
 
-**Note:** The `--recurse-submodules` flag is currently necessary to use [navtools.py](https://github.com/tannerkoza/navtools.py.git) and [laika](https://github.com/tannerkoza/laika.git) as dependencies.
-
-
 2. Install in a virtual environment or base Python (not recommended) using `pip`.
 ```
 pip install navsim/

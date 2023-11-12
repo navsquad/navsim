@@ -42,7 +42,7 @@ We are still very much in development as features are being added on an as-neede
 
 ## Prerequisites
 
-Python **3.9-3.12** is required. We are currently working to make the package usable with Python 3.9 or greater.
+Python **3.10-3.12** is required. We are currently working to make the package usable with Python 3.10 or greater.
 
 ## Installation
 

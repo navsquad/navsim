@@ -93,6 +93,12 @@ class MeasurementSimulation(Simulation):
         return self.__emitter_states
 
     @property
+    def ephemerides(self):
+        print("[navsim] getting emitter ephemerides...")
+
+        return self.__ephemerides
+
+    @property
     def rx_states(self):
         print("[navsim] getting receiver truth states...")
 
@@ -116,7 +122,9 @@ class MeasurementSimulation(Simulation):
 
     def simulate(self, rx_pos: np.array, rx_vel: np.array = None):
         self.__rx_states = self.__simulate_receiver_states(rx_pos=rx_pos, rx_vel=rx_vel)
-        self.__emitter_states = self.__simulate_emitters(rx_pos=rx_pos, rx_vel=rx_vel)
+        self.__emitter_states, self.__ephemerides = self.__simulate_emitters(
+            rx_pos=rx_pos, rx_vel=rx_vel
+        )
 
         description = "[navsim] simulating observables"
         for period, emitters in tqdm(
@@ -242,8 +250,8 @@ class MeasurementSimulation(Simulation):
         emitter_states = self.__emitters.from_datetimes(
             datetimes=self.__datetime_series, rx_pos=rx_pos, rx_vel=rx_vel
         )
-
-        return emitter_states
+        ephemerides = self.__emitters.ephemerides()
+        return emitter_states, ephemerides
 
     def __compute_channel_delays(self, emitters: dict, pos: float):
         code_delays = defaultdict()

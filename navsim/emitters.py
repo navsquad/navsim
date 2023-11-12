@@ -42,6 +42,15 @@ class SatelliteEmitterState:
 class SatelliteEmitters:
     """contains emitters for specified constellations and returns states and observables for given receiver states and time"""
 
+    GNSS = {"gps": "G", "glonass": "R", "galileo": "E", "beidou": "C", "qznss": "J"}
+    LEO = {
+        "iridium-NEXT": "IRIDIUM",
+        "orbcomm": "ORBCOMM",
+        "globalstar": "GLOBALSTAR",
+        "oneweb": "ONEWEB",
+        "starlink": "STARLINK",
+    }
+
     def __init__(self, constellations: list, mask_angle: float = 10.0):
         self._filter_constellations(constellations=constellations)
 
@@ -58,6 +67,7 @@ class SatelliteEmitters:
         self._is_multiple_epoch = False
         self._rx_pos = np.zeros(3)
         self._rx_vel = np.zeros(3)
+        self.emitter_ids = set([])
 
     @property
     def states(self):
@@ -70,6 +80,10 @@ class SatelliteEmitters:
     @property
     def rx_vel(self):
         return self._rx_vel
+
+    @property
+    def ephemerides(self):
+        return self._get_ephemerides
 
     def from_datetime(
         self,
@@ -303,15 +317,21 @@ class SatelliteEmitters:
                 continue
 
             symbol = "".join([i for i in emitter_id if i.isalpha()])
-            try:
+            try:  # removes specialty satellites in constellation
                 if symbol in self._laika_constellations.values():
-                    symbol_index = list(self._laika_constellations.values()).index(symbol)
-                    constellation = list(self._laika_constellations.keys())[symbol_index]
+                    symbol_index = list(self._laika_constellations.values()).index(
+                        symbol
+                    )
+                    constellation = list(self._laika_constellations.keys())[
+                        symbol_index
+                    ]
                 else:
                     symbol_index = list(self._skyfield_constellations.values()).index(
                         symbol
                     )
-                    constellation = list(self._skyfield_constellations.keys())[symbol_index]
+                    constellation = list(self._skyfield_constellations.keys())[
+                        symbol_index
+                    ]
             except:
                 continue
 
@@ -336,32 +356,41 @@ class SatelliteEmitters:
                 az=emitter_az,
                 el=emitter_el,
             )
+            self.emitter_ids.add(emitter_id)
             emitters[emitter_id] = emitter_state
 
         return emitters
+
+    def _get_ephemerides(self):
+        # assumes signal simulation isn't longer than 4 hours, therefore time input is last time of simulation
+        ephemerides = defaultdict()
+
+        for emitter in self.emitter_ids:
+            emitter_constellation = "".join([i for i in emitter if i.isalpha()])
+            if emitter_constellation in SatelliteEmitters.GNSS.values():
+                eph = self._dog.get_nav(prn=emitter, time=self._gps_time)
+            else:
+                for satellite in self._skyfield_satellites:
+                    if satellite.name == emitter:
+                        eph = satellite
+
+            ephemerides[emitter] = eph
+
+        return ephemerides
 
     def _filter_constellations(self, constellations: list):
         if isinstance(constellations, str):
             constellations = constellations.split()
 
-        GNSS = {"gps": "G", "glonass": "R", "galileo": "E", "beidou": "C", "qznss": "J"}
-        LEO = {
-            "iridium-NEXT": "IRIDIUM",
-            "orbcomm": "ORBCOMM",
-            "globalstar": "GLOBALSTAR",
-            "oneweb": "ONEWEB",
-            "starlink": "STARLINK",
-        }
-
         self._laika_constellations = {
             gnss: symbol
-            for gnss, symbol in GNSS.items()
+            for gnss, symbol in SatelliteEmitters.GNSS.items()
             for constellation in constellations
             if constellation.casefold() == gnss.casefold()
         }
         self._skyfield_constellations = {
             leo: symbol
-            for leo, symbol in LEO.items()
+            for leo, symbol in SatelliteEmitters.LEO.items()
             for constellation in constellations
             if constellation.casefold() == leo.casefold()
         }

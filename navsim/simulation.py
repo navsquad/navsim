@@ -44,7 +44,8 @@ class ReceiverTruthStates:
 
 @dataclass(frozen=True)
 class Observables:
-    pseudorange: float
+    code_pseudorange: float
+    carrier_pseudorange: float
     pseudorange_rate: float
     cn0: float
 
@@ -121,12 +122,13 @@ class MeasurementSimulation(Simulation):
         for period, emitters in tqdm(
             enumerate(self.__emitter_states), total=self.__nperiods, desc=description
         ):
-            delays, drifts = self.__compute_channel_delays(
+            code_delays, carrier_delays, drifts = self.__compute_channel_delays(
                 emitters=emitters, pos=self.__rx_states.pos[period]
             )
             observables = self.__compute_observables(
                 emitters=emitters,
-                delays=delays,
+                code_delays=code_delays,
+                carrier_delays=carrier_delays,
                 drifts=drifts,
                 clock_bias=self.__rx_states.clock_bias[period],
                 clock_drift=self.__rx_states.clock_drift[period],
@@ -244,7 +246,8 @@ class MeasurementSimulation(Simulation):
         return emitter_states
 
     def __compute_channel_delays(self, emitters: dict, pos: float):
-        delays = defaultdict()
+        code_delays = defaultdict()
+        carrier_delays = defaultdict()
         drifts = defaultdict()
 
         # provides initial delay values to calculate drift
@@ -283,15 +286,17 @@ class MeasurementSimulation(Simulation):
             self._iono_delay[emitter] = new_iono_delay
             self._tropo_delay[emitter] = new_tropo_delay
 
-            delays[emitter] = new_iono_delay + new_tropo_delay
+            code_delays[emitter] = new_iono_delay + new_tropo_delay
+            carrier_delays[emitter] = -new_iono_delay + new_tropo_delay
             drifts[emitter] = -iono_drift + tropo_drift
 
-        return delays, drifts
+        return code_delays, carrier_delays, drifts
 
     def __compute_observables(
         self,
         emitters: dict,
-        delays: dict,
+        code_delays: dict,
+        carrier_delays: dict,
         drifts: dict,
         clock_bias: float,
         clock_drift: float,
@@ -302,7 +307,8 @@ class MeasurementSimulation(Simulation):
             signal = self.__signals.get(state.constellation.casefold())
 
             # observables do not include emitter clock terms
-            pseudorange = state.range + delays[emitter] + clock_bias
+            code_pseudorange = state.range + code_delays[emitter] + clock_bias
+            carrier_pseudorange = state.range + carrier_delays[emitter] + clock_bias
             pseudorange_rate = state.range_rate + drifts[emitter] + clock_drift
             cn0 = compute_carrier_to_noise(
                 range=state.range,
@@ -313,7 +319,10 @@ class MeasurementSimulation(Simulation):
             )
 
             emitter_observables = Observables(
-                pseudorange=pseudorange, pseudorange_rate=pseudorange_rate, cn0=cn0
+                code_pseudorange=code_pseudorange,
+                carrier_pseudorange=carrier_pseudorange,
+                pseudorange_rate=pseudorange_rate,
+                cn0=cn0,
             )
             observables[emitter] = emitter_observables
 

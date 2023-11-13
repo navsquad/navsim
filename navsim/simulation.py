@@ -207,7 +207,8 @@ class MeasurementSimulation(Simulation):
 
     def __init_emitters(self, configuration: ConstellationsConfiguration):
         self.__emitters = SatelliteEmitters(
-            constellations=configuration.emitters, mask_angle=configuration.mask_angle
+            constellations=configuration.emitters.keys(),
+            mask_angle=configuration.mask_angle,
         )
         self.__signals = {
             constellation.casefold(): Signals(

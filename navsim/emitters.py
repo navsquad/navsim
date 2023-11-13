@@ -19,6 +19,7 @@ from navtools.common import (
     compute_range_and_unit_vector,
     compute_range_rate,
 )
+from navsim.message import package_laika_data
 
 
 @dataclass
@@ -369,10 +370,13 @@ class SatelliteEmitters:
             emitter_constellation = "".join([i for i in emitter if i.isalpha()])
             if emitter_constellation in SatelliteEmitters.GNSS.values():
                 eph = self._dog.get_nav(prn=emitter, time=self._gps_time)
+                eph = package_laika_data(
+                    constellation_symbol=emitter_constellation, data=eph.data
+                )
             else:
                 for satellite in self._skyfield_satellites:
                     if satellite.name == emitter:
-                        eph = satellite
+                        eph = satellite.model
 
             ephemerides[emitter] = eph
 

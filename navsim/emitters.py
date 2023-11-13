@@ -317,7 +317,7 @@ class SatelliteEmitters:
             if is_only_visible_emitters and not is_visible:
                 continue
 
-            symbol = "".join([i for i in emitter_id if i.isalpha()])
+            symbol = self._extract_symbol_from_id(id=emitter_id)
             try:  # removes specialty satellites in constellation
                 if symbol in self._laika_constellations.values():
                     symbol_index = list(self._laika_constellations.values()).index(
@@ -499,3 +499,15 @@ class SatelliteEmitters:
             emitters_epoch[emitter_name] = state
 
         return emitters_epoch
+
+    @staticmethod
+    def _extract_symbol_from_id(id: str):
+        symbol = []
+        for i in id:
+            if not i.isalpha():
+                break
+            symbol.append(i)
+
+        symbol = "".join(symbol)
+
+        return symbol

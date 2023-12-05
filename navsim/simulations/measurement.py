@@ -8,11 +8,11 @@ from tqdm import tqdm
 from datetime import datetime, timedelta
 from collections import defaultdict
 from dataclasses import dataclass
-from abc import ABC, abstractmethod
 
-from navsim.emitters import SatelliteEmitters
 from navtools import get_signal_properties
 from navtools.signals.signals import SatelliteSignal
+from navsim.simulations.simulation import Simulation
+from navsim.emitters import SatelliteEmitters
 from navsim.error_models import (
     get_ionosphere_model,
     get_troposphere_model,
@@ -54,32 +54,6 @@ class Observables:
 class Signals:
     properties: SatelliteSignal
     js: float
-
-
-# Simulation Factory
-def get_simulation(simulation_type: str):
-    SIMULATIONS = {
-        "measurement": MeasurementSimulation(),
-    }
-
-    simulation_type = "".join([i for i in simulation_type if i.isalnum()]).casefold()
-    simulation = SIMULATIONS.get(simulation_type, MeasurementSimulation())
-
-    return simulation
-
-
-# Simulation Objects
-class Simulation(ABC):
-    def __init__(self) -> None:
-        super().__init__()
-
-    @abstractmethod
-    def initialize(self, configuration: SimulationConfiguration):
-        pass
-
-    @abstractmethod
-    def simulate(self):
-        pass
 
 
 class MeasurementSimulation(Simulation):

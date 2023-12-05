@@ -213,7 +213,7 @@ class SatelliteEmitters:
             rx_vel = np.zeros_like(rx_pos)
 
         if self._laika_constellations:
-            laika_desc = f"extracting {self._laika_string} emitter states"
+            laika_desc = f"[navsim] extracting {self._laika_string} emitter states"
             laika_duration_states = [
                 self._dog.get_all_sat_info(time=gps_time)
                 for gps_time in tqdm(gps_times, desc=laika_desc)
@@ -246,7 +246,7 @@ class SatelliteEmitters:
         self._emitter_states = []
         for datetime, states, pos, vel in tqdm(
             zip(datetimes, emitter_duration_states, rx_pos, rx_vel),
-            desc="computing line-of-sight states",
+            desc="[navsim] computing line-of-sight states",
             total=len(datetimes),
         ):
             self._time = datetime
@@ -473,7 +473,7 @@ class SatelliteEmitters:
 
     def _get_multiple_epoch_skyfield_states(self, times):
         emitters = []
-        skyfield_ex_desc = f"extracting {self._skyfield_string} emitter states"
+        skyfield_ex_desc = f"[navsim] extracting {self._skyfield_string} emitter states"
 
         ecef_emitters = [
             (emitter.name, emitter.at(times).frame_xyz_and_velocity(itrs))

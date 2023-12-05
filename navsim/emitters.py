@@ -369,10 +369,13 @@ class SatelliteEmitters:
         for emitter in self.emitter_ids:
             emitter_constellation = "".join([i for i in emitter if i.isalpha()])
             if emitter_constellation in SatelliteEmitters.GNSS.values():
-                eph = self._dog.get_nav(prn=emitter, time=self._gps_time)
-                eph = package_laika_data(
-                    constellation_symbol=emitter_constellation, data=eph.data
-                )
+                try:
+                    eph = self._dog.get_nav(prn=emitter, time=self._gps_time)
+                    eph = package_laika_data(
+                        constellation_symbol=emitter_constellation, data=eph.data
+                    )
+                except:
+                    continue
             else:
                 for satellite in self._skyfield_satellites:
                     if satellite.name == emitter:

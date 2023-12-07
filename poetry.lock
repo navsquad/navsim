@@ -862,16 +862,16 @@ description = "a Python package of fundamental positioning, navigation, and timi
 optional = false
 python-versions = "^3.10"
 files = []
-develop = true
+develop = false
 
 [package.dependencies]
 numba = "^0.58.1"
 
 [package.source]
 type = "git"
-url = "https://github.com/tannerkoza/navtools.py.git"
-reference = "HEAD"
-resolved_reference = "56483742f914779582d8f6e9ce96ebafe2672d84"
+url = "https://github.com/navsquad/navtools.py.git"
+reference = "main"
+resolved_reference = "9118584055bcc6fbb6a74c625b151098ee4a2946"
 
 [[package]]
 name = "ncompress"
@@ -1800,4 +1800,4 @@ web = ["wslink (>=1.0.4)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "6bc1f35ef58b4296724005c81f85b1d858dbe5b0de529434acf010cd05d2e26c"
+content-hash = "d05ac2418fcbba3124aa9ab69501301fbe85d3d185d5571f2a9f8748c2e80c95"

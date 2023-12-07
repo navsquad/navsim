@@ -8,7 +8,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-navtools = {git = "https://github.com/tannerkoza/navtools.py.git", develop = true}
+navtools = {git = "https://github.com/navsquad/navtools.py.git", rev = "main"}
 laika = {git = "https://github.com/tannerkoza/laika.git", develop = true}
 pyyaml = "^6.0.1"
 dacite = "^1.8.1"

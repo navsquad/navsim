@@ -282,9 +282,9 @@ class MeasurementSimulation(Simulation):
             self._iono_delay[emitter] = new_iono_delay
             self._tropo_delay[emitter] = new_tropo_delay
 
-            code_delays[emitter] = 0  # new_iono_delay + new_tropo_delay
-            carrier_delays[emitter] = 0  # -new_iono_delay + new_tropo_delay
-            drifts[emitter] = 0  # -iono_drift + tropo_drift
+            code_delays[emitter] = new_iono_delay + new_tropo_delay
+            carrier_delays[emitter] = -new_iono_delay + new_tropo_delay
+            drifts[emitter] = -iono_drift + tropo_drift
 
         return code_delays, carrier_delays, drifts
 

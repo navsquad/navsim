@@ -40,9 +40,9 @@ class ConstellationsConfiguration:
 
 @dataclass(frozen=True)
 class ErrorConfiguration:
-    ionosphere: str = "klobuchar"
-    troposphere: str = "saastamoinen"
-    rx_clock: str = "low_quality_tcxo"
+    ionosphere: str = None
+    troposphere: str = None
+    rx_clock: str = None
 
 
 @dataclass(frozen=True)

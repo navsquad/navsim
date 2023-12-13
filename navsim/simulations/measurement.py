@@ -195,26 +195,49 @@ class MeasurementSimulation(Simulation):
         }
 
     def __init_errors(self, configuration: ErrorConfiguration):
-        self.__ionosphere = get_ionosphere_model(model_name=configuration.ionosphere)
-        self.__troposphere = get_troposphere_model(model_name=configuration.troposphere)
-        self.__rx_clock = get_clock_allan_variance_values(
-            clock_name=configuration.rx_clock
-        )
+        if configuration.ionosphere is None:
+            self.__is_ionosphere_simulated = False
+        else:
+            self.__is_ionosphere_simulated = True
+            self.__ionosphere = get_ionosphere_model(model_name=configuration.ionosphere)
+        
+        if configuration.troposphere is None:
+            self.__is_troposphere_simulated = False
+        else:
+            self.__is_troposphere_simulated = True
+            self.__troposphere = get_troposphere_model(model_name=configuration.troposphere)
+                
+        if configuration.rx_clock is None:
+            self.__is_rx_clock_simulated = False
+        else:
+            self.__is_rx_clock_simulated = True
+            self.__rx_clock = get_clock_allan_variance_values(
+                clock_name=configuration.rx_clock
+            )
+            
+        self.__is_atmosphere_drift_uninitialized = True
+        
+            
 
     def __simulate_receiver_states(self, rx_pos: np.array, rx_vel: np.array):
-        if rx_pos.size == 3:  # tiles rx_pos and rx_vel if static
+        # tiles rx_pos and rx_vel if static
+        if rx_pos.size == 3:  
             rx_pos = np.tile(rx_pos, (self.__nperiods, 1))
             rx_vel = np.zeros_like(rx_pos)
         else:
             rx_pos = rx_pos[: self.__nperiods, :]
             rx_vel = rx_vel[: self.__nperiods, :]
 
-        clock_bias, clock_drift = compute_clock_states(
-            h0=self.__rx_clock.h0,
-            h2=self.__rx_clock.h2,
-            T=self.__tsim,
-            nperiods=self.__nperiods,
-        )  # [m, m/s]
+        if self.__is_rx_clock_simulated:
+            clock_bias, clock_drift = compute_clock_states(
+                h0=self.__rx_clock.h0,
+                h2=self.__rx_clock.h2,
+                T=self.__tsim,
+                nperiods=self.__nperiods,
+            )  # [m, m/s]
+        else:
+            clock_bias = np.zeros(self.__nperiods)
+            clock_drift = np.zeros(self.__nperiods)
 
         self.__timeseries = np.linspace(
             start=0, stop=self.__duration, num=self.__nperiods
@@ -246,41 +269,51 @@ class MeasurementSimulation(Simulation):
         carrier_delays = defaultdict()
         drifts = defaultdict()
 
-        # provides initial delay values to calculate drift
-        if not hasattr(self, "_iono_delay"):
-            self._iono_delay = {emitter: 0.0 for emitter in emitters}
+        # initializes delay values to calculate drift
+        if self.__is_atmosphere_drift_uninitialized:
+            self.__iono_delay = {emitter: 0.0 for emitter in emitters}
+            self.__tropo_delay = {emitter: 0.0 for emitter in emitters}
+            
+            self.__is_atmosphere_drift_uninitialized = False
 
-        if not hasattr(self, "_tropo_delay"):
-            self._tropo_delay = {emitter: 0.0 for emitter in emitters}
-
-        # removes exited and adds new emitters in view
+        # removes out of view and adds in view emitters
         self.__update_emitters_in_period(
-            target_emitters=self._iono_delay, updated_emitters=emitters
+            target_emitters=self.__iono_delay, updated_emitters=emitters
         )
         self.__update_emitters_in_period(
-            target_emitters=self._tropo_delay, updated_emitters=emitters
+            target_emitters=self.__tropo_delay, updated_emitters=emitters
         )
 
         for emitter, state in emitters.items():
-            signal = self.__signals.get(state.constellation.casefold())
-            iono_parameters = IonosphereModelParameters(
-                time=state.datetime,
-                rx_pos=pos,
-                emitter_pos=state.pos,
-                az=state.az,
-                el=state.el,
-                fcarrier=signal.properties.fcarrier,
-            )
-            tropo_parameters = TroposphereModelParameters(rx_pos=pos, el=state.el)
+            
+            if self.__is_ionosphere_simulated:
+                signal = self.__signals.get(state.constellation.casefold())
+                ionosphere_parameters = IonosphereModelParameters(
+                    time=state.datetime,
+                    rx_pos=pos,
+                    emitter_pos=state.pos,
+                    az=state.az,
+                    el=state.el,
+                    fcarrier=signal.properties.fcarrier,
+                )
+                
+                new_iono_delay = self.__ionosphere.get_delay(params=ionosphere_parameters)
+                iono_drift = (new_iono_delay - self.__iono_delay[emitter]) / self.__tsim
+            else:
+                new_iono_delay = 0.0
+                iono_drift = 0.0
+            
+            if self.__is_troposphere_simulated:    
+                troposphere_parameters = TroposphereModelParameters(rx_pos=pos, el=state.el)
 
-            new_iono_delay = self.__ionosphere.get_delay(params=iono_parameters)
-            new_tropo_delay = self.__troposphere.get_delay(params=tropo_parameters)
-
-            iono_drift = (new_iono_delay - self._iono_delay[emitter]) / self.__tsim
-            tropo_drift = (new_tropo_delay - self._tropo_delay[emitter]) / self.__tsim
-
-            self._iono_delay[emitter] = new_iono_delay
-            self._tropo_delay[emitter] = new_tropo_delay
+                new_tropo_delay = self.__troposphere.get_delay(params=troposphere_parameters)
+                tropo_drift = (new_tropo_delay - self.__tropo_delay[emitter]) / self.__tsim
+            else:
+                new_tropo_delay = 0.0
+                tropo_drift = 0.0
+                
+            self.__iono_delay[emitter] = new_iono_delay
+            self.__tropo_delay[emitter] = new_tropo_delay
 
             code_delays[emitter] = new_iono_delay + new_tropo_delay
             carrier_delays[emitter] = -new_iono_delay + new_tropo_delay

@@ -84,6 +84,12 @@ class MeasurementSimulation(Simulation):
 
         return self.__observables
 
+    @property
+    def signal_properties(self):
+        print("[navsim] getting signal properties...")
+
+        return [signal.properties for signal in self.__signals.values()]
+
     def initialize(self, configuration: SimulationConfiguration):
         self.__init_time(configuration=configuration.time)
         self.__init_emitters(configuration=configuration.constellations)
@@ -97,7 +103,7 @@ class MeasurementSimulation(Simulation):
     def simulate(self, rx_pos: np.array, rx_vel: np.array = None):
         self.__rx_states = self.__simulate_receiver_states(rx_pos=rx_pos, rx_vel=rx_vel)
         self.__emitter_states, self.__ephemerides = self.__simulate_emitters(
-            rx_pos=rx_pos, rx_vel=rx_vel
+            rx_pos=self.__rx_states.pos, rx_vel=self.__rx_states.vel
         )
 
         description = "[navsim] simulating observables"
@@ -160,6 +166,12 @@ class MeasurementSimulation(Simulation):
         print(f"[navsim] exported results to {self.__output_file_stem}.mat")
 
     def __init_time(self, configuration: TimeConfiguration):
+        self.__duration = configuration.duration
+        self.__tsim = 1 / configuration.fsim
+        self.__nperiods = (
+            int(np.ceil(configuration.duration / self.__tsim)) + 1
+        )  # add one to account for duration
+
         self.__initial_time = datetime(
             year=configuration.year,
             month=configuration.month,
@@ -168,16 +180,6 @@ class MeasurementSimulation(Simulation):
             minute=configuration.minute,
             second=configuration.second,
         )
-
-        self.__tsim = 1 / configuration.fsim
-        self.__timeseries = np.arange(
-            0, configuration.duration + self.__tsim, self.__tsim
-        )
-        self.__datetime_series = [
-            self.__initial_time + timedelta(0, time_step)
-            for time_step in self.__timeseries
-        ]
-        self.__nperiods = len(self.__datetime_series)
 
     def __init_emitters(self, configuration: ConstellationsConfiguration):
         self.__emitters = SatelliteEmitters(
@@ -203,6 +205,9 @@ class MeasurementSimulation(Simulation):
         if rx_pos.size == 3:  # tiles rx_pos and rx_vel if static
             rx_pos = np.tile(rx_pos, (self.__nperiods, 1))
             rx_vel = np.zeros_like(rx_pos)
+        else:
+            rx_pos = rx_pos[: self.__nperiods, :]
+            rx_vel = rx_vel[: self.__nperiods, :]
 
         clock_bias, clock_drift = compute_clock_states(
             h0=self.__rx_clock.h0,
@@ -210,6 +215,14 @@ class MeasurementSimulation(Simulation):
             T=self.__tsim,
             nperiods=self.__nperiods,
         )  # [m, m/s]
+
+        self.__timeseries = np.linspace(
+            start=0, stop=self.__duration, num=self.__nperiods
+        )
+        self.__datetime_series = [
+            self.__initial_time + timedelta(0, time_step)
+            for time_step in self.__timeseries
+        ]
 
         states = ReceiverTruthStates(
             time=self.__timeseries,
@@ -269,9 +282,9 @@ class MeasurementSimulation(Simulation):
             self._iono_delay[emitter] = new_iono_delay
             self._tropo_delay[emitter] = new_tropo_delay
 
-            code_delays[emitter] = new_iono_delay + new_tropo_delay
-            carrier_delays[emitter] = -new_iono_delay + new_tropo_delay
-            drifts[emitter] = -iono_drift + tropo_drift
+            code_delays[emitter] = 0  # new_iono_delay + new_tropo_delay
+            carrier_delays[emitter] = 0  # -new_iono_delay + new_tropo_delay
+            drifts[emitter] = 0  # -iono_drift + tropo_drift
 
         return code_delays, carrier_delays, drifts
 

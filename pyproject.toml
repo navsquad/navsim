@@ -8,7 +8,11 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
+<<<<<<< Updated upstream
 navtools = {git = "https://github.com/navsquad/navtools.py.git", rev = "main", develop = true}
+=======
+navtools = {git = "https://github.com/navsquad/navtools.py.git", rev = "main"}
+>>>>>>> Stashed changes
 laika = {git = "https://github.com/tannerkoza/laika.git", develop = true}
 pyyaml = "^6.0.1"
 dacite = "^1.8.1"

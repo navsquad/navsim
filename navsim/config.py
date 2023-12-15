@@ -43,6 +43,10 @@ class ErrorConfiguration:
     ionosphere: str = None
     troposphere: str = None
     rx_clock: str = None
+    pseudorange_awgn_sigma: float = 0.0
+    carr_psr_awgn_sigma: float = 0.0
+    pseudorange_rate_awgn_sigma: float = 0.0
+
 
 
 @dataclass(frozen=True)

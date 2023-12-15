@@ -214,6 +214,10 @@ class MeasurementSimulation(Simulation):
             self.__rx_clock = get_clock_allan_variance_values(
                 clock_name=configuration.rx_clock
             )
+
+        self.__pseudorange_awgn_sigma = configuration.pseudorange_awgn_sigma
+        self.__carr_psr_awgn_sigma = configuration.carr_psr_awgn_sigma
+        self.__pseudorange_rate_awgn_sigma = configuration.pseudorange_rate_awgn_sigma
             
         self.__is_atmosphere_drift_uninitialized = True
         
@@ -336,9 +340,9 @@ class MeasurementSimulation(Simulation):
             signal = self.__signals.get(state.constellation.casefold())
 
             # observables do not include emitter clock terms
-            code_pseudorange = state.range + code_delays[emitter] + clock_bias
-            carrier_pseudorange = state.range + carrier_delays[emitter] + clock_bias
-            pseudorange_rate = state.range_rate + drifts[emitter] + clock_drift
+            code_pseudorange = state.range + code_delays[emitter] + clock_bias + self.__pseudorange_awgn_sigma * np.random.randn()
+            carrier_pseudorange = state.range + carrier_delays[emitter] + clock_bias + self.__carr_psr_awgn_sigma * np.random.randn()
+            pseudorange_rate = state.range_rate + drifts[emitter] + clock_drift + self.__pseudorange_rate_awgn_sigma * np.random.randn()
             cn0 = compute_carrier_to_noise(
                 range=state.range,
                 transmit_power=signal.properties.transmit_power,

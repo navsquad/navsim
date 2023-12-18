@@ -7,10 +7,8 @@ import warnings
 from tqdm import tqdm
 from datetime import datetime, timedelta
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
-from navtools import get_signal_properties
-from navtools.signals.signals import SatelliteSignal
 from navtools.constants import SPEED_OF_LIGHT
 from navsim.simulations.simulation import SignalSimulation
 from navsim.emitters import SatelliteEmitters
@@ -30,10 +28,17 @@ from navsim.config import (
     TimeConfiguration,
     ConstellationsConfiguration,
     ErrorConfiguration,
+    SignalConfiguration,
 )
 
 
 # Simulation Outputs
+@dataclass(frozen=True)
+class EmitterStates:
+    truth_emitter_states: list
+    ephemeris_emitter_states: list
+
+
 @dataclass(frozen=True)
 class ReceiverTruthStates:
     time: np.array
@@ -52,12 +57,6 @@ class Observables:
     cn0: float
 
 
-@dataclass(frozen=True)
-class Signals:
-    properties: SatelliteSignal
-    js: float
-
-
 class MeasurementSimulation(SignalSimulation):
     def __init__(self, configuration: SimulationConfiguration) -> None:
         self.__init_time(configuration=configuration.time)
@@ -72,8 +71,12 @@ class MeasurementSimulation(SignalSimulation):
     @property
     def emitter_states(self):
         print("[navsim] getting emitter truth states...")
+        emitter_states = EmitterStates(
+            truth_emitter_states=self.__emitter_states,
+            ephemeris_emitter_states=self.__ephemeris_emitter_states,
+        )
 
-        return self.__emitter_states
+        return emitter_states
 
     @property
     def ephemerides(self):
@@ -97,11 +100,18 @@ class MeasurementSimulation(SignalSimulation):
     def signal_properties(self):
         print("[navsim] getting signal properties...")
 
-        return [signal.properties for signal in self.__signals.values()]
+        return {
+            constellation: signal.properties
+            for constellation, signal in self.__signals.items()
+        }
 
     def simulate(self, rx_pos: np.array, rx_vel: np.array = None):
         self.__rx_states = self.__simulate_receiver_states(rx_pos=rx_pos, rx_vel=rx_vel)
-        self.__emitter_states, self.__ephemerides = self.__simulate_emitters(
+        (
+            self.__emitter_states,
+            self.__ephemeris_emitter_states,
+            self.__ephemerides,
+        ) = self.__simulate_emitters(
             rx_pos=self.__rx_states.pos, rx_vel=self.__rx_states.vel
         )
 
@@ -151,13 +161,19 @@ class MeasurementSimulation(SignalSimulation):
         formatted_emitter_states = self.__reformat_for_mat_file(
             emitters_info=self.__emitter_states
         )
+        formatted_ephemeris_emitter_states = self.__reformat_for_mat_file(
+            emitters_info=self.__emitter_states
+        )
         formatted_observables = self.__reformat_for_mat_file(
             emitters_info=self.__observables
         )
         sio.savemat(
             file_name=output_path.with_suffix(".mat"),
             mdict={
-                "emitter_states": formatted_emitter_states,
+                "emitter_states": EmitterStates(
+                    truth_emitter_states=formatted_emitter_states,
+                    ephemeris_emitter_states=formatted_ephemeris_emitter_states,
+                ),
                 "rx_states": self.__rx_states,
                 "observables": formatted_observables,
             },
@@ -190,11 +206,8 @@ class MeasurementSimulation(SignalSimulation):
             mask_angle=configuration.mask_angle,
         )
         self.__signals = {
-            constellation.casefold(): Signals(
-                properties=get_signal_properties(signal_name=properties.get("signal")),
-                js=properties.get("js"),
-            )
-            for constellation, properties in configuration.emitters.items()
+            constellation.casefold(): signal
+            for constellation, signal in configuration.emitters.items()
         }
 
     def __init_errors(self, configuration: ErrorConfiguration):
@@ -225,7 +238,7 @@ class MeasurementSimulation(SignalSimulation):
         self.__pseudorange_awgn_sigma = configuration.pseudorange_awgn_sigma
         self.__carr_psr_awgn_sigma = configuration.carr_psr_awgn_sigma
         self.__pseudorange_rate_awgn_sigma = configuration.pseudorange_rate_awgn_sigma
-            
+
         self.__is_atmosphere_drift_uninitialized = True
 
     def __simulate_receiver_states(self, rx_pos: np.array, rx_vel: np.array):
@@ -271,7 +284,11 @@ class MeasurementSimulation(SignalSimulation):
             datetimes=self.__datetime_series, rx_pos=rx_pos, rx_vel=rx_vel
         )
         ephemerides = self.__emitters.ephemerides()
-        return emitter_states, ephemerides
+        ephemeris_emitter_states = self.perturb_emitter_states(
+            emitter_states=emitter_states
+        )
+
+        return emitter_states, ephemeris_emitter_states, ephemerides
 
     def __compute_channel_delays(self, emitters: dict, pos: float):
         code_delays = defaultdict()
@@ -352,9 +369,24 @@ class MeasurementSimulation(SignalSimulation):
             signal = self.__signals.get(state.constellation.casefold())
 
             # observables do not include emitter clock terms
-            code_pseudorange = state.range + code_delays[emitter] + clock_bias + self.__pseudorange_awgn_sigma * np.random.randn()
-            carrier_pseudorange = state.range + carrier_delays[emitter] + clock_bias + self.__carr_psr_awgn_sigma * np.random.randn()
-            pseudorange_rate = state.range_rate + drifts[emitter] + clock_drift + self.__pseudorange_rate_awgn_sigma * np.random.randn()
+            code_pseudorange = (
+                state.range
+                + code_delays[emitter]
+                + clock_bias
+                + self.__pseudorange_awgn_sigma * np.random.randn()
+            )
+            carrier_pseudorange = (
+                state.range
+                + carrier_delays[emitter]
+                + clock_bias
+                + self.__carr_psr_awgn_sigma * np.random.randn()
+            )
+            pseudorange_rate = (
+                state.range_rate
+                + drifts[emitter]
+                + clock_drift
+                + self.__pseudorange_rate_awgn_sigma * np.random.randn()
+            )
             carrier_doppler = (
                 -pseudorange_rate * signal.properties.fcarrier / SPEED_OF_LIGHT
             )
@@ -417,3 +449,30 @@ class MeasurementSimulation(SignalSimulation):
 
         for emitter in removed_emitters:
             target_emitters.pop(emitter)
+
+    @staticmethod
+    def perturb_emitter_states(emitter_states: list):  # TODO: Refine these errors
+        perturbed_emitter_states = []
+
+        for states in emitter_states:
+            new_states = defaultdict()
+
+            for state in states.values():
+                new_state = replace(state)
+
+                # clear truth values
+                new_state.az = 0
+                new_state.el = 0
+                new_state.clock_bias = 0
+                new_state.clock_drift = 0
+                new_state.range = 0
+                new_state.range_rate = 0
+
+                # not a great assumption condsidering the noise is correlated
+                new_state.pos = state.pos + 0.5 * np.random.randn(*state.pos.shape)
+                new_state.vel = state.vel + 0.15 * np.random.randn(*state.vel.shape)
+
+                new_states[new_state.id] = new_state
+            perturbed_emitter_states.append(new_states)
+
+        return perturbed_emitter_states

@@ -3,10 +3,14 @@ import yaml
 import inspect
 import dacite as dc
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from tkinter import filedialog as fd
+from typing import Callable
 
+from navtools.signals.signals import SatelliteSignal
+from navtools import get_signal_properties
+from navtools.signals.signals import bpsk_correlator
 from navsim.exceptions import (
     InvalidConfigurationFormatting,
     EmptyRequiredConfigurationField,
@@ -40,13 +44,24 @@ class ConstellationsConfiguration:
 
 @dataclass(frozen=True)
 class ErrorConfiguration:
-    ionosphere: str = None
-    troposphere: str = None
-    rx_clock: str = None
+    ionosphere: str | None = None
+    troposphere: str | None = None
+    rx_clock: str | None = None
     pseudorange_awgn_sigma: float = 0.0
     carr_psr_awgn_sigma: float = 0.0
     pseudorange_rate_awgn_sigma: float = 0.0
-    emitter_ephemeris: bool = False
+
+
+@dataclass(frozen=True)
+class SignalConfiguration:
+    signal: str
+    js: float = 0.0
+    correlator_model: str = "bpsk"
+
+    def __post_init__(self):
+        object.__setattr__(
+            self, "properties", get_signal_properties(signal_name=self.signal)
+        )
 
 
 @dataclass(frozen=True)
@@ -81,10 +96,20 @@ def get_configuration(configuration_path: str) -> SimulationConfiguration:
         raise InvalidConfigurationFormatting(config_name=config_file_name) from exc
 
     try:
+        # time configuration
         time = dc.from_dict(data_class=TimeConfiguration, data=config.get("time"))
+
+        # constellations configuration
+        constellations = config.get("constellations")
+        constellations["emitters"] = {
+            constellation: dc.from_dict(data_class=SignalConfiguration, data=data)
+            for constellation, data in constellations.get("emitters").items()
+        }
         constellations = dc.from_dict(
-            data_class=ConstellationsConfiguration, data=config.get("constellations")
+            data_class=ConstellationsConfiguration, data=constellations
         )
+
+        # errors configuration
         errors = dc.from_dict(data_class=ErrorConfiguration, data=config.get("errors"))
 
         return SimulationConfiguration(

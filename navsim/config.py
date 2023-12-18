@@ -46,12 +46,11 @@ class ErrorConfiguration:
     pseudorange_awgn_sigma: float = 0.0
     carr_psr_awgn_sigma: float = 0.0
     pseudorange_rate_awgn_sigma: float = 0.0
-
+    emitter_ephemeris: bool = False
 
 
 @dataclass(frozen=True)
 class SimulationConfiguration:
-    type: str
     time: TimeConfiguration
     constellations: ConstellationsConfiguration
     errors: ErrorConfiguration
@@ -82,7 +81,6 @@ def get_configuration(configuration_path: str) -> SimulationConfiguration:
         raise InvalidConfigurationFormatting(config_name=config_file_name) from exc
 
     try:
-        type = config.get("type")
         time = dc.from_dict(data_class=TimeConfiguration, data=config.get("time"))
         constellations = dc.from_dict(
             data_class=ConstellationsConfiguration, data=config.get("constellations")
@@ -90,7 +88,6 @@ def get_configuration(configuration_path: str) -> SimulationConfiguration:
         errors = dc.from_dict(data_class=ErrorConfiguration, data=config.get("errors"))
 
         return SimulationConfiguration(
-            type=type,
             time=time,
             constellations=constellations,
             errors=errors,

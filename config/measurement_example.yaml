@@ -1,5 +1,3 @@
-type: measurement
-
 time:
   duration: 3600.0 # [s]
   fsim: 1 # [Hz]

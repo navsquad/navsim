@@ -99,7 +99,7 @@ def get_configuration(configuration_path: str) -> SimulationConfiguration:
         # time configuration
         time = dc.from_dict(data_class=TimeConfiguration, data=config.get("time"))
 
-        # constellations configuration
+        # constellations
         constellations = config.get("constellations")
         constellations["emitters"] = {
             constellation: dc.from_dict(data_class=SignalConfiguration, data=data)
@@ -110,6 +110,8 @@ def get_configuration(configuration_path: str) -> SimulationConfiguration:
         )
 
         # errors configuration
+        if "errors" not in config.keys():
+            config["errors"] = {}  # handles case when no errors section in config
         errors = dc.from_dict(data_class=ErrorConfiguration, data=config.get("errors"))
 
         return SimulationConfiguration(

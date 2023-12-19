@@ -50,6 +50,7 @@ class ReceiverTruthStates:
 
 @dataclass(frozen=True)
 class Observables:
+    constellation: str
     code_pseudorange: float
     carrier_pseudorange: float
     pseudorange_rate: float
@@ -400,6 +401,7 @@ class MeasurementSimulation(SignalSimulation):
             )
 
             emitter_observables = Observables(
+                constellation=state.constellation.casefold(),
                 code_pseudorange=code_pseudorange,
                 carrier_pseudorange=carrier_pseudorange,
                 pseudorange_rate=pseudorange_rate,

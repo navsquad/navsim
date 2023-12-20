@@ -1,6 +1,7 @@
 import numpy as np
-from numba import njit
+import navtools as nt
 
+from numba import njit
 from navtools.constants import SPEED_OF_LIGHT, BOLTZMANN
 
 
@@ -57,6 +58,10 @@ def compute_carrier_to_noise(
 
 @njit(cache=True)
 def compute_range_error(true_prange, est_prange, cycle_length):
+    est_prange = nt.smart_transpose(
+        col_size=true_prange.size, transformed_array=est_prange
+    )
+
     range_error = true_prange - est_prange
     cycle_error = range_error / cycle_length
 
@@ -65,6 +70,10 @@ def compute_range_error(true_prange, est_prange, cycle_length):
 
 @njit(cache=True)
 def compute_range_rate_error(true_prange_rate, est_prange_rate, wavelength):
+    est_prange_rate = nt.smart_transpose(
+        col_size=true_prange_rate.size, transformed_array=est_prange_rate
+    )
+
     range_rate_error = true_prange_rate - est_prange_rate
     ferror = range_rate_error / -wavelength
 

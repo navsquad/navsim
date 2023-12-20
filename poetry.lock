@@ -872,7 +872,7 @@ scipy = "^1.11.4"
 type = "git"
 url = "https://github.com/navsquad/navtools.py.git"
 reference = "main"
-resolved_reference = "16448db221aa536b1f02c1971eba9794f90a8a0f"
+resolved_reference = "cda85f0d4c45ba86c251bfe81a867f38bd1f7db6"
 
 [[package]]
 name = "ncompress"

@@ -110,9 +110,9 @@ class CorrelatorSimulation:
                 ]
             )
 
-            chip_error = np.array(self.__errors.chip.get(constellation)).T
-            ferror = np.array(self.__errors.frequency.get(constellation)).T
-            phase_error = np.array(self.__errors.carrier_phase.get(constellation)).T
+            chip_error = np.array(self.__errors.chip.get(constellation))
+            ferror = np.array(self.__errors.frequency.get(constellation))
+            phase_error = np.array(self.__errors.carrier_phase.get(constellation))
 
             I, Q = correlator(
                 T=self.T,

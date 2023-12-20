@@ -8,7 +8,7 @@ from navsim.configuration import SimulationConfiguration
 
 # User-Defined Parameters
 IS_EMITTER_TYPE_TRUTH = True
-TAP_SPACING = [0, 0.5, -0.5]
+TAP_SPACING = [0]
 
 # Path Parameters
 PROJECT_PATH = Path(__file__).parents[1]
@@ -32,7 +32,9 @@ def simulate():
         emitters = sim_emitter_states.ephemeris
 
     for epoch, observables in tqdm(
-        enumerate(sim_observables), total=len(sim_observables)
+        enumerate(sim_observables),
+        total=len(sim_observables),
+        desc="[navsim] simulating correlators",
     ):
         # time update
 
@@ -43,14 +45,14 @@ def simulate():
             ),
             1000,
             axis=0,
-        )
+        ).T
         prange_rates = np.repeat(
             np.array(
                 [emitter.range_rate for emitter in emitters[epoch].values()]
             ).reshape(1, -1),
             1000,
             axis=0,
-        )
+        ).T
 
         sim.compute_errors(
             observables=observables,

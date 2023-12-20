@@ -129,7 +129,9 @@ class CorrelatorSimulation:
         inphase = np.hstack(inphase)
         quadrature = np.hstack(quadrature)
 
-        return inphase, quadrature
+        outputs = CorrelatorOutputs(inphase=inphase, quadrature=quadrature)
+
+        return outputs
 
     def __compute_cycle_lengths(self, observables: dict):
         chip_length = []

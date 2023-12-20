@@ -56,26 +56,16 @@ def compute_carrier_to_noise(
 
 
 @njit(cache=True)
-def compute_code_range_error(true_pseudorange, predicted_pseudorange, chip_length):
-    pseudorange_error = true_pseudorange - predicted_pseudorange
-    chip_error = pseudorange_error / chip_length
+def compute_range_error(true_prange, est_prange, cycle_length):
+    range_error = true_prange - est_prange
+    cycle_error = range_error / cycle_length
 
-    return pseudorange_error, chip_error
-
-
-@njit(cache=True)
-def compute_carrier_range_error(true_pseudorange, predicted_pseudorange, wavelength):
-    pseudorange_error = true_pseudorange - predicted_pseudorange
-    carrier_phase_error = pseudorange_error / wavelength
-
-    return pseudorange_error, carrier_phase_error
+    return range_error, cycle_error
 
 
 @njit(cache=True)
-def compute_range_rate_error(
-    true_pseudorange_rate, predicted_pseudorange_rate, wavelength
-):
-    range_rate_error = true_pseudorange_rate - predicted_pseudorange_rate
-    carrier_freq_error = range_rate_error / -wavelength
+def compute_range_rate_error(true_prange_rate, est_prange_rate, wavelength):
+    range_rate_error = true_prange_rate - est_prange_rate
+    ferror = range_rate_error / -wavelength
 
-    return range_rate_error, carrier_freq_error
+    return range_rate_error, ferror

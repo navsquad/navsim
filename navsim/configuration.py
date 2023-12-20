@@ -96,7 +96,7 @@ def get_configuration(configuration_path: str) -> SimulationConfiguration:
         raise InvalidConfigurationFormatting(config_name=config_file_name) from exc
 
     try:
-        # time configuration
+        # time
         time = dc.from_dict(data_class=TimeConfiguration, data=config.get("time"))
 
         # constellations
@@ -109,7 +109,7 @@ def get_configuration(configuration_path: str) -> SimulationConfiguration:
             data_class=ConstellationsConfiguration, data=constellations
         )
 
-        # errors configuration
+        # errors 
         if "errors" not in config.keys():
             config["errors"] = {}  # handles case when no errors section in config
         errors = dc.from_dict(data_class=ErrorConfiguration, data=config.get("errors"))

@@ -1,5 +1,5 @@
 from navsim.simulations.measurement import MeasurementSimulation
-from navsim.config import SimulationConfiguration
+from navsim.configuration import SimulationConfiguration
 
 
 # Simulation Factory

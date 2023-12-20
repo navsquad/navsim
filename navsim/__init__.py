@@ -1,4 +1,4 @@
-from .config import *
+from .configuration import *
 from .exceptions import *
 from .common import *
 from .simulations.measurement import *

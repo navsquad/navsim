@@ -23,7 +23,7 @@ from navsim.error_models.atmosphere import (
     IonosphereModelParameters,
     TroposphereModelParameters,
 )
-from navsim.config import (
+from navsim.configuration import (
     SimulationConfiguration,
     TimeConfiguration,
     ConstellationsConfiguration,
@@ -35,8 +35,8 @@ from navsim.config import (
 # Simulation Outputs
 @dataclass(frozen=True)
 class EmitterStates:
-    truth_emitter_states: list
-    ephemeris_emitter_states: list
+    truth: list
+    ephemeris: list
 
 
 @dataclass(frozen=True)
@@ -73,8 +73,8 @@ class MeasurementSimulation(SignalSimulation):
     def emitter_states(self):
         print("[navsim] getting emitter truth states...")
         emitter_states = EmitterStates(
-            truth_emitter_states=self.__emitter_states,
-            ephemeris_emitter_states=self.__ephemeris_emitter_states,
+            truth=self.__emitter_states,
+            ephemeris=self.__ephemeris_emitter_states,
         )
 
         return emitter_states
@@ -172,8 +172,8 @@ class MeasurementSimulation(SignalSimulation):
             file_name=output_path.with_suffix(".mat"),
             mdict={
                 "emitter_states": EmitterStates(
-                    truth_emitter_states=formatted_emitter_states,
-                    ephemeris_emitter_states=formatted_ephemeris_emitter_states,
+                    truth=formatted_emitter_states,
+                    ephemeris=formatted_ephemeris_emitter_states,
                 ),
                 "rx_states": self.__rx_states,
                 "observables": formatted_observables,

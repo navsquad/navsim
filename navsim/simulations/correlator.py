@@ -154,10 +154,9 @@ class CorrelatorSimulation:
         return chip_length, wavelength
 
     def __sort_errors(self, errors: np.ndarray):
-        nerrors_emitters, _ = errors.shape
-
-        if nerrors_emitters != self.__nemitters:
-            errors = errors.T
+        errors = nt.smart_transpose(
+            col_size=self.__nemitters, transformed_array=errors
+        ).T  # transposing again to ensure nrows=nemitters
 
         sorted_errors = defaultdict(lambda: [])
 

@@ -27,7 +27,6 @@ RUBIDIUM = NavigationClock(h0=2e-22, h1=4.5e-26, h2=1e-30)
 CESIUM = NavigationClock(h0=2e-22, h1=5e-27, h2=1.5e-33)
 
 
-@njit(cache=True)
 def compute_clock_states(
     h0: float, h2: float, T: float, nperiods: int = 1
 ) -> tuple[np.array, np.array]:
@@ -55,14 +54,19 @@ def compute_clock_states(
     sf = h0 / 2
     sg = h2 * 2 * np.pi**2
 
-    # error variances
-    sigma_phase_error = np.sqrt(sf * T + (1 / 3) * sg * T**3)  # [s]
-    sigma_freq_error = np.sqrt(sg * T)  # [s/s]
+    # error covariance noise
+    covariance = np.array(
+        [
+            [sf * T + (1 / 3) * sg * T**3, (1 / 2) * sg * T**2],
+            [(1 / 2) * sg * T**2, sg * T],
+        ]
+    )  # [s], [s/s]
+    bias_noise, drift_noise = np.random.multivariate_normal(
+        mean=[0, 0], cov=covariance, size=nperiods
+    ).T
 
-    drift_ss = np.cumsum(sigma_freq_error * np.random.randn(nperiods))
-    bias_s = np.cumsum(drift_ss * T) + np.cumsum(
-        sigma_phase_error * np.random.randn(nperiods)
-    )
+    drift_ss = np.cumsum(drift_noise)
+    bias_s = np.cumsum(drift_ss * T) + np.cumsum(bias_noise)
 
     drift_ms = drift_ss * SPEED_OF_LIGHT
     bias_m = bias_s * SPEED_OF_LIGHT

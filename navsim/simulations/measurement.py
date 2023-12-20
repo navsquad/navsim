@@ -453,8 +453,10 @@ class MeasurementSimulation(SignalSimulation):
             target_emitters.pop(emitter)
 
     @staticmethod
-    def perturb_emitter_states(emitter_states: list):  # TODO: Refine these errors
+    def perturb_emitter_states(emitter_states: list):
         perturbed_emitter_states = []
+        pos_bias = 0.5 * np.random.randn(3)
+        vel_bias = 0.15 * np.random.randn(3)
 
         for states in emitter_states:
             new_states = defaultdict()
@@ -470,9 +472,12 @@ class MeasurementSimulation(SignalSimulation):
                 new_state.range = 0
                 new_state.range_rate = 0
 
-                # not a great assumption condsidering the noise is correlated
-                new_state.pos = state.pos + 0.5 * np.random.randn(*state.pos.shape)
-                new_state.vel = state.vel + 0.15 * np.random.randn(*state.vel.shape)
+                new_state.pos = (
+                    state.pos + pos_bias + 0.001 * np.random.randn(*state.pos.shape)
+                )
+                new_state.vel = (
+                    state.vel + vel_bias + 0.001 * np.random.randn(*state.vel.shape)
+                )
 
                 new_states[new_state.id] = new_state
             perturbed_emitter_states.append(new_states)

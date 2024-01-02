@@ -33,13 +33,13 @@ from navsim.configuration import (
 
 
 # Simulation Outputs
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class EmitterStates:
     truth: list
     ephemeris: list
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class ReceiverTruthStates:
     time: np.array
     pos: np.array
@@ -48,7 +48,7 @@ class ReceiverTruthStates:
     clock_drift: np.array
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class Observables:
     constellation: str
     code_pseudorange: float

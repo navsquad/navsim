@@ -86,8 +86,6 @@ class CorrelatorSimulation:
             wavelength=wavelength,
         )
 
-        a = self.__sort_errors(code_prange_error)
-
         self.__errors = CorrelatorErrors(
             code_prange=self.__sort_errors(code_prange_error),
             carrier_prange=self.__sort_errors(carrier_prange_error),

@@ -22,7 +22,7 @@ from navtools.common import (
 from navsim.message import package_laika_data
 
 
-@dataclass
+@dataclass(repr=False)
 class SatelliteEmitterState:
     """dataclass that contains states for satellite emitters produced by :class:`navtools.emitters.satellites.SatelliteEmitters`"""
 

@@ -21,7 +21,9 @@ class CorrelatorErrors:
 @dataclass(frozen=True)
 class CorrelatorOutputs:
     inphase: np.ndarray
+    subinphase: np.ndarray
     quadrature: np.ndarray
+    subquadrature: np.ndarray
 
 
 class CorrelatorSimulation:
@@ -95,9 +97,11 @@ class CorrelatorSimulation:
             frequency=self.__sort_errors(ferror),
         )
 
-    def correlate(self, tap_spacing: float = 0.0):
+    def correlate(self, tap_spacing: float = 0.0, nsubcorrelators: int = None):
         inphase = []
+        subinphase = []
         quadrature = []
+        subquadrature = []
 
         for constellation, correlator in self.__correlators.items():
             cn0 = np.array(
@@ -124,10 +128,35 @@ class CorrelatorSimulation:
             inphase.append(I)
             quadrature.append(Q)
 
-        inphase = np.hstack(inphase)
-        quadrature = np.hstack(quadrature)
+            if nsubcorrelators is not None:
+                subtime_T = self.T * np.arange(0, nsubcorrelators) / nsubcorrelators
 
-        outputs = CorrelatorOutputs(inphase=inphase, quadrature=quadrature)
+                # * assumes linear ferror over integration period *
+                subphase_errors = np.array([ferror * T for T in subtime_T])
+
+                subI, subQ = correlator(
+                    T=self.T / nsubcorrelators,
+                    cn0=cn0,
+                    chip_error=chip_error,
+                    ferror=ferror,
+                    phase_error=subphase_errors,
+                    tap_spacing=tap_spacing,
+                )
+
+                subinphase.append(subI)
+                subquadrature.append(subQ)
+
+        inphase = np.hstack(inphase)
+        subinphase = np.hstack(subinphase)
+        quadrature = np.hstack(quadrature)
+        subquadrature = np.hstack(subquadrature)
+
+        outputs = CorrelatorOutputs(
+            inphase=inphase,
+            subinphase=subinphase,
+            quadrature=quadrature,
+            subquadrature=subquadrature,
+        )
 
         return outputs
 

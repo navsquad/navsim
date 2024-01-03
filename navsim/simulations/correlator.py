@@ -145,10 +145,10 @@ class CorrelatorSimulation:
                 subI = None
                 subQ = None
 
-        inphase.append(I)
-        quadrature.append(Q)
-        subinphase.append(subI)
-        subquadrature.append(subQ)
+            inphase.append(I)
+            quadrature.append(Q)
+            subinphase.append(subI)
+            subquadrature.append(subQ)
 
         inphase = np.hstack(inphase)
         subinphase = np.hstack(subinphase)

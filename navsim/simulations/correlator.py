@@ -125,14 +125,12 @@ class CorrelatorSimulation:
                 tap_spacing=tap_spacing,
             )
 
-            inphase.append(I)
-            quadrature.append(Q)
-
             if nsubcorrelators is not None:
                 subtime_T = self.T * np.arange(0, nsubcorrelators) / nsubcorrelators
 
                 # * assumes linear ferror over integration period *
-                subphase_errors = np.array([ferror * T for T in subtime_T])
+                subphase_deltas = np.array([ferror * T for T in subtime_T])
+                subphase_errors = phase_error - subphase_deltas
 
                 subI, subQ = correlator(
                     T=self.T / nsubcorrelators,
@@ -143,8 +141,14 @@ class CorrelatorSimulation:
                     tap_spacing=tap_spacing,
                 )
 
-                subinphase.append(subI)
-                subquadrature.append(subQ)
+            else:
+                subI = None
+                subQ = None
+
+        inphase.append(I)
+        quadrature.append(Q)
+        subinphase.append(subI)
+        subquadrature.append(subQ)
 
         inphase = np.hstack(inphase)
         subinphase = np.hstack(subinphase)

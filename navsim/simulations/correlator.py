@@ -73,12 +73,12 @@ class CorrelatorSimulation:
         chip_length, wavelength = self.__compute_cycle_lengths(observables=observables)
 
         code_prange_error, chip_error = compute_range_error(
-            true_prange=carrier_pranges,
+            true_prange=code_pranges,
             est_prange=est_pranges,
             cycle_length=chip_length,
         )
         carrier_prange_error, cphase_error = compute_range_error(
-            true_prange=code_pranges,
+            true_prange=carrier_pranges,
             est_prange=est_pranges,
             cycle_length=wavelength,
         )
@@ -98,6 +98,9 @@ class CorrelatorSimulation:
         )
 
     def correlate(self, tap_spacing: float = 0.0, nsubcorrelators: int = None):
+        if nsubcorrelators == 0:
+            nsubcorrelators = None
+
         inphase = []
         subinphase = []
         quadrature = []

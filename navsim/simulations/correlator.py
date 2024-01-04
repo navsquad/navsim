@@ -118,6 +118,7 @@ class CorrelatorSimulation:
             chip_error = np.array(self.__errors.chip.get(constellation))
             ferror = np.array(self.__errors.frequency.get(constellation))
             phase_error = np.array(self.__errors.carrier_phase.get(constellation))
+            # phase_error = np.zeros_like(phase_error)
 
             I, Q = correlator(
                 T=self.T,
@@ -129,7 +130,9 @@ class CorrelatorSimulation:
             )
 
             if nsubcorrelators is not None:
-                subtime_T = self.T * np.arange(0, nsubcorrelators) / nsubcorrelators
+                subtime_T = np.flip(
+                    self.T * np.arange(0, nsubcorrelators) / nsubcorrelators
+                )
 
                 # * assumes linear ferror over integration period *
                 subphase_deltas = np.array([ferror * T for T in subtime_T])

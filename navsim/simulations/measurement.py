@@ -163,7 +163,7 @@ class MeasurementSimulation(SignalSimulation):
             emitters_info=self.__emitter_states
         )
         formatted_ephemeris_emitter_states = self.__reformat_for_mat_file(
-            emitters_info=self.__emitter_states
+            emitters_info=self.__ephemeris_emitter_states
         )
         formatted_observables = self.__reformat_for_mat_file(
             emitters_info=self.__observables

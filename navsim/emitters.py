@@ -435,7 +435,7 @@ class SatelliteEmitters:
 
         if first_datetime >= FIRST_CELESTRAK_REPO_DATETIME:
             year = first_datetime.timetuple().tm_year
-            day = first_datetime.timetuple().tm_yday
+            day = "%03d" % first_datetime.timetuple().tm_yday
             urls = [
                 f"https://raw.githubusercontent.com/tannerkoza/celestrak-orbital-data/main/{constellation}/{year}/{day}/{constellation}.tle"
                 for constellation in constellations

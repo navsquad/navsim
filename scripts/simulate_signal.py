@@ -13,6 +13,8 @@ configuration = ns.get_configuration(configuration_path=CONFIG_PATH)
 sim = ns.get_signal_simulation(
     simulation_type="measurement", configuration=configuration
 )
-sim.simulate(rx_pos=rx_pos)
+
+sim.generate_truth(rx_pos=rx_pos)
+sim.simulate()
 
 sim.to_hdf(output_dir_path=DATA_PATH)

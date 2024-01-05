@@ -28,8 +28,8 @@ from navsim.configuration import (
     TimeConfiguration,
     ConstellationsConfiguration,
     ErrorConfiguration,
-    SignalConfiguration,
 )
+from navsim.exceptions import NonexistentTruthStates
 
 
 # Simulation Outputs
@@ -66,6 +66,8 @@ class MeasurementSimulation(SignalSimulation):
         self.__build_output_file_stem(configuration=configuration)
 
         self.__observables = []
+
+        self.__is_truth_set = False
 
         super().__init__()
 
@@ -106,19 +108,33 @@ class MeasurementSimulation(SignalSimulation):
             for constellation, signal in self.__signals.items()
         }
 
-    def simulate(self, rx_pos: np.array, rx_vel: np.array = None):
-        self.__rx_states = self.__simulate_receiver_states(rx_pos=rx_pos, rx_vel=rx_vel)
+    def generate_truth(self, rx_pos: np.array, rx_vel: np.array = None):
+        # tiles rx_pos and rx_vel if static
+        if rx_pos.size == 3:
+            self.__rx_pos = np.tile(rx_pos, (self.__nperiods, 1))
+            self.__rx_vel = np.zeros_like(self.__rx_pos)
+        else:
+            self.__rx_pos = rx_pos[: self.__nperiods, :]
+            self.__rx_vel = rx_vel[: self.__nperiods, :]
+
         (
             self.__emitter_states,
             self.__ephemeris_emitter_states,
             self.__ephemerides,
-        ) = self.__simulate_emitters(
-            rx_pos=self.__rx_states.pos, rx_vel=self.__rx_states.vel
-        )
+        ) = self.__simulate_emitters(rx_pos=self.__rx_pos, rx_vel=self.__rx_vel)
 
-        description = "[navsim] simulating observables"
+        self.__is_truth_set = True
+
+    def simulate(self):
+        if not self.__is_truth_set:
+            raise NonexistentTruthStates()
+
+        self.__rx_states = self.__simulate_receiver_biases()
+
         for period, emitters in tqdm(
-            enumerate(self.__emitter_states), total=self.__nperiods, desc=description
+            enumerate(self.__emitter_states),
+            total=self.__nperiods,
+            desc="[navsim] simulating observables",
         ):
             code_delays, carrier_delays, drifts = self.__compute_channel_delays(
                 emitters=emitters, pos=self.__rx_states.pos[period]
@@ -200,6 +216,13 @@ class MeasurementSimulation(SignalSimulation):
             minute=configuration.minute,
             second=configuration.second,
         )
+        self.__timeseries = np.linspace(
+            start=0, stop=self.__duration, num=self.__nperiods
+        )
+        self.__datetime_series = [
+            self.__initial_time + timedelta(0, time_step)
+            for time_step in self.__timeseries
+        ]
 
     def __init_emitters(self, configuration: ConstellationsConfiguration):
         self.__emitters = SatelliteEmitters(
@@ -242,15 +265,7 @@ class MeasurementSimulation(SignalSimulation):
 
         self.__is_atmosphere_drift_uninitialized = True
 
-    def __simulate_receiver_states(self, rx_pos: np.array, rx_vel: np.array):
-        # tiles rx_pos and rx_vel if static
-        if rx_pos.size == 3:
-            rx_pos = np.tile(rx_pos, (self.__nperiods, 1))
-            rx_vel = np.zeros_like(rx_pos)
-        else:
-            rx_pos = rx_pos[: self.__nperiods, :]
-            rx_vel = rx_vel[: self.__nperiods, :]
-
+    def __simulate_receiver_biases(self):
         if self.__is_rx_clock_simulated:
             clock_bias, clock_drift = compute_clock_states(
                 h0=self.__rx_clock.h0,
@@ -262,18 +277,10 @@ class MeasurementSimulation(SignalSimulation):
             clock_bias = np.zeros(self.__nperiods)
             clock_drift = np.zeros(self.__nperiods)
 
-        self.__timeseries = np.linspace(
-            start=0, stop=self.__duration, num=self.__nperiods
-        )
-        self.__datetime_series = [
-            self.__initial_time + timedelta(0, time_step)
-            for time_step in self.__timeseries
-        ]
-
         states = ReceiverTruthStates(
             time=self.__timeseries,
-            pos=rx_pos,
-            vel=rx_vel,
+            pos=self.__rx_pos,
+            vel=self.__rx_vel,
             clock_bias=clock_bias,
             clock_drift=clock_drift,
         )

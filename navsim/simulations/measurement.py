@@ -73,7 +73,6 @@ class MeasurementSimulation(SignalSimulation):
 
     @property
     def emitter_states(self):
-        print("[navsim] getting emitter truth states...")
         emitter_states = EmitterStates(
             truth=self.__emitter_states,
             ephemeris=self.__ephemeris_emitter_states,
@@ -83,26 +82,18 @@ class MeasurementSimulation(SignalSimulation):
 
     @property
     def ephemerides(self):
-        print("[navsim] getting emitter ephemerides...")
-
         return self.__ephemerides
 
     @property
     def rx_states(self):
-        print("[navsim] getting receiver truth states...")
-
         return self.__rx_states
 
     @property
     def observables(self):
-        print("[navsim] getting simulated observables...")
-
         return self.__observables
 
     @property
     def signal_properties(self):
-        print("[navsim] getting signal properties...")
-
         return {
             constellation: signal.properties
             for constellation, signal in self.__signals.items()

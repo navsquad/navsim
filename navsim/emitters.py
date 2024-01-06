@@ -2,6 +2,7 @@ import numpy as np
 import importlib
 import itertools
 import warnings
+import navtools as nt
 
 from dataclasses import dataclass
 from tqdm import tqdm
@@ -69,6 +70,7 @@ class SatelliteEmitters:
         self._rx_pos = np.zeros(3)
         self._rx_vel = np.zeros(3)
         self.emitter_ids = set([])
+        self.__dop = []
 
     @property
     def states(self):
@@ -85,6 +87,10 @@ class SatelliteEmitters:
     @property
     def ephemerides(self):
         return self._get_ephemerides
+
+    @property
+    def dop(self):
+        return np.array(self.__dop)
 
     def from_datetime(
         self,
@@ -301,6 +307,7 @@ class SatelliteEmitters:
 
     def _compute_los_states(self, emitter_states: dict, is_only_visible_emitters: bool):
         emitters = defaultdict()
+        unit_vectors = []
 
         for emitter_id, emitter_state in emitter_states.items():
             emitter_pos = emitter_state[0]
@@ -342,6 +349,7 @@ class SatelliteEmitters:
             range_rate = compute_range_rate(
                 rx_vel=self._rx_vel, emitter_vel=emitter_vel, unit_vector=unit_vector
             )
+            unit_vectors.append(unit_vector)
 
             emitter_state = SatelliteEmitterState(
                 id=emitter_id,
@@ -360,7 +368,36 @@ class SatelliteEmitters:
             self.emitter_ids.add(emitter_id)
             emitters[emitter_id] = emitter_state
 
+        unit_vectors = np.array(unit_vectors)
+        self._compute_dop(unit_vectors=unit_vectors, nemitters=len(emitters))
+
         return emitters
+
+    def _compute_dop(self, unit_vectors: np.ndarray, nemitters: int):
+        lla = nt.ecef2lla(self.rx_pos[0], self.rx_pos[1], self.rx_pos[2])
+        R = np.array(
+            [
+                [
+                    -np.sin(lla.lon),
+                    -np.cos(lla.lon) * np.sin(lla.lat),
+                    np.cos(lla.lat) * np.cos(lla.lon),
+                    0,
+                ],
+                [
+                    np.cos(lla.lon),
+                    -np.sin(lla.lon) * np.sin(lla.lat),
+                    np.cos(lla.lat) * np.sin(lla.lon),
+                    0,
+                ],
+                [0, np.cos(lla.lat), np.sin(lla.lat), 0],
+                [0, 0, 0, 1],
+            ]
+        ).T  # ECEF to ENU
+        H = np.append(-unit_vectors, np.ones(nemitters)[..., None], axis=1)
+
+        dop = R @ np.linalg.inv(H.T @ H) @ R.T
+
+        self.__dop.append(dop)
 
     def _get_ephemerides(self):
         # assumes signal simulation isn't longer than 4 hours, therefore time input is last time of simulation

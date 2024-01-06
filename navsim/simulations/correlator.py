@@ -97,10 +97,7 @@ class CorrelatorSimulation:
             frequency=self.__sort_errors(ferror),
         )
 
-    def correlate(self, tap_spacing: float = 0.0, nsubcorrelators: int = None):
-        if nsubcorrelators == 0:
-            nsubcorrelators = None
-
+    def correlate(self, tap_spacing: float = 0.0, nsubcorrelators: int = 2):
         inphase = []
         subinphase = []
         quadrature = []
@@ -118,41 +115,37 @@ class CorrelatorSimulation:
             chip_error = np.array(self.__errors.chip.get(constellation))
             ferror = np.array(self.__errors.frequency.get(constellation))
             phase_error = np.array(self.__errors.carrier_phase.get(constellation))
-            # phase_error = np.zeros_like(phase_error)
+
+            subtime_T = np.flip(
+                self.T * np.arange(0, nsubcorrelators) / nsubcorrelators
+            )
+
+            # * assumes linear ferror over integration period *
+            subphase_deltas = np.array([ferror * T for T in subtime_T])
+            subphase_errors = phase_error - subphase_deltas
 
             I, Q = correlator(
                 T=self.T,
                 cn0=cn0,
                 chip_error=chip_error,
                 ferror=ferror,
-                phase_error=phase_error,
+                phase_error=subphase_errors,
+                tap_spacing=tap_spacing,
+            )
+            meanI = np.mean(I, axis=0)
+            meanQ = np.mean(Q, axis=0)
+
+            subI, subQ = correlator(
+                T=self.T / nsubcorrelators,
+                cn0=cn0,
+                chip_error=chip_error,
+                ferror=ferror,
+                phase_error=subphase_errors,
                 tap_spacing=tap_spacing,
             )
 
-            if nsubcorrelators is not None:
-                subtime_T = np.flip(
-                    self.T * np.arange(0, nsubcorrelators) / nsubcorrelators
-                )
-
-                # * assumes linear ferror over integration period *
-                subphase_deltas = np.array([ferror * T for T in subtime_T])
-                subphase_errors = phase_error - subphase_deltas
-
-                subI, subQ = correlator(
-                    T=self.T / nsubcorrelators,
-                    cn0=cn0,
-                    chip_error=chip_error,
-                    ferror=ferror,
-                    phase_error=subphase_errors,
-                    tap_spacing=tap_spacing,
-                )
-
-            else:
-                subI = None
-                subQ = None
-
-            inphase.append(I)
-            quadrature.append(Q)
+            inphase.append(meanI)
+            quadrature.append(meanQ)
             subinphase.append(subI)
             subquadrature.append(subQ)
 

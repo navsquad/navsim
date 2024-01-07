@@ -374,28 +374,32 @@ class SatelliteEmitters:
         return emitters
 
     def _compute_dop(self, unit_vectors: np.ndarray, nemitters: int):
-        lla = nt.ecef2lla(self.rx_pos[0], self.rx_pos[1], self.rx_pos[2])
+        lla = np.radians(nt.ecef2lla(self.rx_pos[0], self.rx_pos[1], self.rx_pos[2]))
         R = np.array(
             [
                 [
-                    -np.sin(lla.lon),
-                    -np.cos(lla.lon) * np.sin(lla.lat),
-                    np.cos(lla.lat) * np.cos(lla.lon),
+                    -np.sin(lla[1]),
+                    -np.cos(lla[1]) * np.sin(lla[0]),
+                    np.cos(lla[0]) * np.cos(lla[1]),
                     0,
                 ],
                 [
-                    np.cos(lla.lon),
-                    -np.sin(lla.lon) * np.sin(lla.lat),
-                    np.cos(lla.lat) * np.sin(lla.lon),
+                    np.cos(lla[1]),
+                    -np.sin(lla[1]) * np.sin(lla[0]),
+                    np.cos(lla[0]) * np.sin(lla[1]),
                     0,
                 ],
-                [0, np.cos(lla.lat), np.sin(lla.lat), 0],
+                [0, np.cos(lla[0]), np.sin(lla[0]), 0],
                 [0, 0, 0, 1],
             ]
         ).T  # ECEF to ENU
         H = np.append(-unit_vectors, np.ones(nemitters)[..., None], axis=1)
 
-        dop = R @ np.linalg.inv(H.T @ H) @ R.T
+        try:
+            ecef_dop = np.linalg.inv(H.T @ H)
+            dop = R @ ecef_dop @ R.T
+        except:
+            dop = np.zeros_like(H.T @ H)
 
         self.__dop.append(dop)
 

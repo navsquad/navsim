@@ -37,6 +37,7 @@ from navsim.exceptions import NonexistentTruthStates
 class EmitterStates:
     truth: list
     ephemeris: list
+    dop: np.ndarray
 
 
 @dataclass(frozen=True, repr=False)
@@ -76,6 +77,7 @@ class MeasurementSimulation(SignalSimulation):
         emitter_states = EmitterStates(
             truth=self.__emitter_states,
             ephemeris=self.__ephemeris_emitter_states,
+            dop=self.__emitters.dop,
         )
 
         return emitter_states

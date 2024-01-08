@@ -60,9 +60,7 @@ def simulate():
             est_prange_rates=prange_rates,
         )
         correlators = [
-            sim.correlate(
-                tap_spacing=tap_spacing,
-            )
+            sim.correlate(tap_spacing=tap_spacing, include_subcorrelators=False)
             for tap_spacing in TAP_SPACING
         ]
 
@@ -77,7 +75,8 @@ def simulate_measurements(
     measurement_sim = ns.get_signal_simulation(
         simulation_type="measurement", configuration=configuration
     )
-    measurement_sim.simulate(rx_pos=rx_pos, rx_vel=rx_vel)
+    measurement_sim.generate_truth(rx_pos=rx_pos, rx_vel=rx_vel)
+    measurement_sim.simulate()
 
     return (
         measurement_sim.emitter_states,

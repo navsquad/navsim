@@ -97,7 +97,12 @@ class CorrelatorSimulation:
             frequency=self.__sort_errors(ferror),
         )
 
-    def correlate(self, tap_spacing: float = 0.0, nsubcorrelators: int = 2):
+    def correlate(
+        self,
+        tap_spacing: float = 0.0,
+        nsubcorrelators: int = 2,
+        include_subcorrelators: bool = True,
+    ):
         inphase = []
         subinphase = []
         quadrature = []
@@ -123,36 +128,41 @@ class CorrelatorSimulation:
             # * assumes linear ferror over integration period *
             subphase_deltas = np.array([ferror * T for T in subtime_T])
             subphase_errors = phase_error - subphase_deltas
+            mean_phase_errors = np.mean(subphase_errors, axis=0)
 
             I, Q = correlator(
                 T=self.T,
                 cn0=cn0,
                 chip_error=chip_error,
                 ferror=ferror,
-                phase_error=subphase_errors,
-                tap_spacing=tap_spacing,
-            )
-            meanI = np.mean(I, axis=0)
-            meanQ = np.mean(Q, axis=0)
-
-            subI, subQ = correlator(
-                T=self.T / nsubcorrelators,
-                cn0=cn0,
-                chip_error=chip_error,
-                ferror=ferror,
-                phase_error=subphase_errors,
+                phase_error=mean_phase_errors,
                 tap_spacing=tap_spacing,
             )
 
-            inphase.append(meanI)
-            quadrature.append(meanQ)
-            subinphase.append(subI)
-            subquadrature.append(subQ)
+            if include_subcorrelators:
+                subI, subQ = correlator(
+                    T=self.T / nsubcorrelators,
+                    cn0=cn0,
+                    chip_error=chip_error,
+                    ferror=ferror,
+                    phase_error=subphase_errors,
+                    tap_spacing=tap_spacing,
+                )
+                subinphase.append(subI)
+                subquadrature.append(subQ)
+
+            inphase.append(I)
+            quadrature.append(Q)
 
         inphase = np.hstack(inphase)
-        subinphase = np.hstack(subinphase)
         quadrature = np.hstack(quadrature)
-        subquadrature = np.hstack(subquadrature)
+
+        if include_subcorrelators:
+            subinphase = np.hstack(subinphase)
+            subquadrature = np.hstack(subquadrature)
+        else:
+            subinphase = None
+            subquadrature = None
 
         outputs = CorrelatorOutputs(
             inphase=inphase,

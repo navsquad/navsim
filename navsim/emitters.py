@@ -53,7 +53,13 @@ class SatelliteEmitters:
         "starlink": "STARLINK",
     }
 
-    def __init__(self, constellations: list, mask_angle: float = 10.0):
+    def __init__(
+        self,
+        constellations: list,
+        mask_angle: float = 10.0,
+        disable_progress: bool = False,
+    ):
+        self.__disable_progress = disable_progress
         self._filter_constellations(constellations=constellations)
 
         if self._laika_constellations:
@@ -222,7 +228,9 @@ class SatelliteEmitters:
             laika_desc = f"[navsim] extracting {self._laika_string} emitter states"
             laika_duration_states = [
                 self._dog.get_all_sat_info(time=gps_time)
-                for gps_time in tqdm(gps_times, desc=laika_desc)
+                for gps_time in tqdm(
+                    gps_times, desc=laika_desc, disable=self.__disable_progress
+                )
             ]
 
         if self._skyfield_constellations:
@@ -254,6 +262,7 @@ class SatelliteEmitters:
             zip(datetimes, emitter_duration_states, rx_pos, rx_vel),
             desc="[navsim] computing line-of-sight states",
             total=len(datetimes),
+            disable=self.__disable_progress,
         ):
             self._time = datetime
             self._gps_time = GPSTime.from_datetime(datetime=datetime)
@@ -527,7 +536,9 @@ class SatelliteEmitters:
                 ecef_emitters=ecef_emitters,
                 epoch=epoch,
             )
-            for epoch in tqdm(n_times, desc=skyfield_ex_desc)
+            for epoch in tqdm(
+                n_times, desc=skyfield_ex_desc, disable=self.__disable_progress
+            )
         ]
 
         return emitters

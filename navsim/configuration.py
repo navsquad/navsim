@@ -52,7 +52,7 @@ class ErrorConfiguration:
     pseudorange_rate_awgn_sigma: float = 0.0
 
 
-@dataclass(frozen=True)
+@dataclass
 class SignalConfiguration:
     signal: str
     js: float = 0.0
@@ -109,7 +109,7 @@ def get_configuration(configuration_path: str) -> SimulationConfiguration:
             data_class=ConstellationsConfiguration, data=constellations
         )
 
-        # errors 
+        # errors
         if "errors" not in config.keys():
             config["errors"] = {}  # handles case when no errors section in config
         errors = dc.from_dict(data_class=ErrorConfiguration, data=config.get("errors"))

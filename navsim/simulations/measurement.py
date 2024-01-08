@@ -60,15 +60,17 @@ class Observables:
 
 
 class MeasurementSimulation(SignalSimulation):
-    def __init__(self, configuration: SimulationConfiguration) -> None:
+    def __init__(
+        self, configuration: SimulationConfiguration, disable_progress: bool = False
+    ) -> None:
+        self.__disable_progress = disable_progress
+        self.__observables = []
+        self.__is_truth_set = False
+
         self.__init_time(configuration=configuration.time)
         self.__init_emitters(configuration=configuration.constellations)
         self.__init_errors(configuration=configuration.errors)
         self.__build_output_file_stem(configuration=configuration)
-
-        self.__observables = []
-
-        self.__is_truth_set = False
 
         super().__init__()
 
@@ -128,6 +130,7 @@ class MeasurementSimulation(SignalSimulation):
             enumerate(self.__emitter_states),
             total=self.__nperiods,
             desc="[navsim] simulating observables",
+            disable=self.__disable_progress,
         ):
             code_delays, carrier_delays, drifts = self.__compute_channel_delays(
                 emitters=emitters, pos=self.__rx_states.pos[period]
@@ -142,8 +145,6 @@ class MeasurementSimulation(SignalSimulation):
             )
 
             self.__observables.append(observables)
-
-        print("[navsim] measurement simulation complete!")
 
     def to_hdf(self, output_dir_path: str):
         output_path = pl.Path(output_dir_path) / self.__output_file_stem
@@ -194,6 +195,9 @@ class MeasurementSimulation(SignalSimulation):
             f"[navsim] exported measurement-level results to {output_path.with_suffix('.mat')}"
         )
 
+    def clear_observables(self):
+        self.__observables = []
+
     def __init_time(self, configuration: TimeConfiguration):
         self.__duration = configuration.duration
         self.__tsim = 1 / configuration.fsim
@@ -221,6 +225,7 @@ class MeasurementSimulation(SignalSimulation):
         self.__emitters = SatelliteEmitters(
             constellations=configuration.emitters.keys(),
             mask_angle=configuration.mask_angle,
+            disable_progress=self.__disable_progress,
         )
         self.__signals = {
             constellation.casefold(): signal

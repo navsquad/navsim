@@ -28,8 +28,28 @@ class CorrelatorOutputs:
 
 class CorrelatorSimulation:
     @property
-    def errors(self):
-        return self.__errors
+    def chip_errors(self):
+        return dict(self.__chip_err_log)
+
+    @property
+    def code_prange_errors(self):
+        return dict(self.__code_prange_err_log)
+
+    @property
+    def cphase_errors(self):
+        return dict(self.__cphase_err_log)
+
+    @property
+    def carrier_prange_errors(self):
+        return dict(self.__carr_prange_err_log)
+
+    @property
+    def ferrors(self):
+        return dict(self.__ferr_log)
+
+    @property
+    def prange_rate_errors(self):
+        return dict(self.__prange_rate_err_log)
 
     def __init__(self, configuration: SimulationConfiguration) -> None:
         constellations = configuration.constellations
@@ -48,7 +68,15 @@ class CorrelatorSimulation:
             )
             for constellation, emitter in constellations.emitters.items()
         }
+
+        # errors
         self.__errors = None
+        self.__chip_err_log = defaultdict(lambda: [])
+        self.__code_prange_err_log = defaultdict(lambda: [])
+        self.__ferr_log = defaultdict(lambda: [])
+        self.__prange_rate_err_log = defaultdict(lambda: [])
+        self.__cphase_err_log = defaultdict(lambda: [])
+        self.__carr_prange_err_log = defaultdict(lambda: [])
 
         # time
         self.T = 1 / configuration.time.fsim
@@ -60,7 +88,7 @@ class CorrelatorSimulation:
         self.__nemitters = len(self.__observables)
 
         # extract necessary observables
-        carrier_pranges = np.array(
+        carr_pranges = np.array(
             [emitter.carrier_pseudorange for emitter in self.__observables.values()]
         )
         code_pranges = np.array(
@@ -72,29 +100,39 @@ class CorrelatorSimulation:
 
         chip_length, wavelength = self.__compute_cycle_lengths(observables=observables)
 
-        code_prange_error, chip_error = compute_range_error(
+        code_prange_err, chip_err = compute_range_error(
             true_prange=code_pranges,
             est_prange=est_pranges,
             cycle_length=chip_length,
         )
-        carrier_prange_error, cphase_error = compute_range_error(
-            true_prange=carrier_pranges,
+        carrier_prange_err, cphase_err = compute_range_error(
+            true_prange=carr_pranges,
             est_prange=est_pranges,
             cycle_length=wavelength,
         )
-        prange_rate_error, ferror = compute_range_rate_error(
+        prange_rate_err, ferr = compute_range_rate_error(
             true_prange_rate=prange_rates,
             est_prange_rate=est_prange_rates,
             wavelength=wavelength,
         )
 
+        # logging
+        self.__log_by_emitter(data=chip_err, log=self.__chip_err_log)
+        self.__log_by_emitter(data=code_prange_err, log=self.__code_prange_err_log)
+        self.__log_by_emitter(data=cphase_err, log=self.__cphase_err_log)
+        self.__log_by_emitter(
+            data=carrier_prange_err, log=self.__carr_prange_err_log
+        )
+        self.__log_by_emitter(data=ferr, log=self.__ferr_log)
+        self.__log_by_emitter(data=prange_rate_err, log=self.__prange_rate_err_log)
+
         self.__errors = CorrelatorErrors(
-            code_prange=self.__sort_errors(code_prange_error),
-            carrier_prange=self.__sort_errors(carrier_prange_error),
-            prange_rate=self.__sort_errors(prange_rate_error),
-            chip=self.__sort_errors(chip_error),
-            carrier_phase=self.__sort_errors(cphase_error),
-            frequency=self.__sort_errors(ferror),
+            code_prange=self.__sort_constellation_errors(code_prange_err),
+            carrier_prange=self.__sort_constellation_errors(carrier_prange_err),
+            prange_rate=self.__sort_constellation_errors(prange_rate_err),
+            chip=self.__sort_constellation_errors(chip_err),
+            carrier_phase=self.__sort_constellation_errors(cphase_err),
+            frequency=self.__sort_constellation_errors(ferr),
         )
 
     def correlate(
@@ -173,6 +211,16 @@ class CorrelatorSimulation:
 
         return outputs
 
+    def clear_errors(self):
+        self.__errors = None
+
+        self.__chip_err_log = defaultdict(lambda: [])
+        self.__code_prange_err_log = defaultdict(lambda: [])
+        self.__ferr_log = defaultdict(lambda: [])
+        self.__prange_rate_err_log = defaultdict(lambda: [])
+        self.__cphase_err_log = defaultdict(lambda: [])
+        self.__carr_prange_err_log = defaultdict(lambda: [])
+
     def __compute_cycle_lengths(self, observables: dict):
         chip_length = []
         wavelength = []
@@ -195,7 +243,7 @@ class CorrelatorSimulation:
 
         return chip_length, wavelength
 
-    def __sort_errors(self, errors: np.ndarray):
+    def __sort_constellation_errors(self, errors: np.ndarray):
         errors = nt.smart_transpose(
             col_size=self.__nemitters, transformed_array=errors
         ).T  # transposing again to ensure nrows=nemitters
@@ -206,3 +254,7 @@ class CorrelatorSimulation:
             sorted_errors[emitter.constellation].append(errors[emitter_index])
 
         return sorted_errors
+
+    def __log_by_emitter(self, data: np.ndarray, log: defaultdict):
+        for idx, (emitter_id, emitter) in enumerate(self.__observables.items()):
+            log[(emitter.constellation, emitter_id)].append(data[idx])

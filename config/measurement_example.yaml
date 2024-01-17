@@ -17,7 +17,7 @@ constellations:
       js: 0.0
 
 errors:
-  ionosphere: tec_map
-  troposphere: saastamoinen
+  # ionosphere: tec_map
+  # troposphere: saastamoinen
   rx_clock: low_quality_tcxo
 

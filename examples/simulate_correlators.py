@@ -8,7 +8,7 @@ from navsim.configuration import SimulationConfiguration
 
 # User-Defined Parameters
 IS_EMITTER_TYPE_TRUTH = True
-TAP_SPACING = [0]
+TAP_SPACING = [0, -0.5, 0.5]
 
 # Path Parameters
 PROJECT_PATH = Path(__file__).parents[1]
@@ -39,20 +39,24 @@ def simulate():
         # time update
 
         # predict observables
-        pranges = np.repeat(
-            np.array([emitter.range for emitter in emitters[epoch].values()]).reshape(
-                1, -1
-            ),
-            1000,
-            axis=0,
-        ).T
-        prange_rates = np.repeat(
-            np.array(
-                [emitter.range_rate for emitter in emitters[epoch].values()]
-            ).reshape(1, -1),
-            1000,
-            axis=0,
-        ).T
+        pranges = np.array([emitter.range for emitter in emitters[epoch].values()])
+        prange_rates = np.array(
+            [emitter.range_rate for emitter in emitters[epoch].values()]
+        )
+        # pranges = np.repeat(
+        #     np.array([emitter.range for emitter in emitters[epoch].values()]).reshape(
+        #         1, -1
+        #     ),
+        #     1000,
+        #     axis=0,
+        # ).T
+        # prange_rates = np.repeat(
+        #     np.array(
+        #         [emitter.range_rate for emitter in emitters[epoch].values()]
+        #     ).reshape(1, -1),
+        #     1000,
+        #     axis=0,
+        # ).T
 
         sim.compute_errors(
             observables=observables,
@@ -65,6 +69,7 @@ def simulate():
         ]
 
         # close loop
+        print("")
 
 
 def simulate_measurements(

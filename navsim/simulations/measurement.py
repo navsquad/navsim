@@ -223,7 +223,7 @@ class MeasurementSimulation(SignalSimulation):
 
     def __init_emitters(self, configuration: ConstellationsConfiguration):
         self.__emitters = SatelliteEmitters(
-            constellations=configuration.emitters.keys(),
+            systems=configuration.emitters.keys(),
             mask_angle=configuration.mask_angle,
             disable_progress=self.__disable_progress,
         )

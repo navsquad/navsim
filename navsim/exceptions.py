@@ -21,3 +21,12 @@ class NonexistentTruthStates(Exception):
         message = f"no truth states were generated. initialize truth states with simulate_truth() method."
         self.message = message
         super().__init__(self.message)
+
+
+class InvalidDatetimeLEO(Exception):
+    def __init__(self, datetime_str: str):
+        message = (
+            f"no TLE information before {datetime_str}. select a succeeding datetime."
+        )
+        self.message = message
+        super().__init__(self.message)

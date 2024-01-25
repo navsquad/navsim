@@ -11,11 +11,11 @@ from navsim.error_models import compute_range_error, compute_range_rate_error
 @dataclass(frozen=True)
 class CorrelatorErrors:
     code_prange: np.ndarray
-    carrier_prange: np.ndarray
+    carr_prange: np.ndarray
     prange_rate: np.ndarray
     chip: np.ndarray
-    carrier_phase: np.ndarray
-    frequency: np.ndarray
+    carr_phase: np.ndarray
+    freq: np.ndarray
 
 
 @dataclass(frozen=True)
@@ -116,30 +116,31 @@ class CorrelatorSimulation:
             wavelength=wavelength,
         )
 
-        # logging
-        self.__log_by_emitter(data=chip_err, log=self.__chip_err_log)
-        self.__log_by_emitter(data=code_prange_err, log=self.__code_prange_err_log)
-        self.__log_by_emitter(data=cphase_err, log=self.__cphase_err_log)
-        self.__log_by_emitter(
-            data=carrier_prange_err, log=self.__carr_prange_err_log
-        )
-        self.__log_by_emitter(data=ferr, log=self.__ferr_log)
-        self.__log_by_emitter(data=prange_rate_err, log=self.__prange_rate_err_log)
-
         self.__errors = CorrelatorErrors(
             code_prange=self.__sort_constellation_errors(code_prange_err),
-            carrier_prange=self.__sort_constellation_errors(carrier_prange_err),
+            carr_prange=self.__sort_constellation_errors(carrier_prange_err),
             prange_rate=self.__sort_constellation_errors(prange_rate_err),
             chip=self.__sort_constellation_errors(chip_err),
-            carrier_phase=self.__sort_constellation_errors(cphase_err),
-            frequency=self.__sort_constellation_errors(ferr),
+            carr_phase=self.__sort_constellation_errors(cphase_err),
+            freq=self.__sort_constellation_errors(ferr),
         )
+        self.epoch_errors = CorrelatorErrors(
+            code_prange=code_prange_err,
+            carr_prange=carrier_prange_err,
+            prange_rate=prange_rate_err,
+            chip=chip_err,
+            carr_phase=cphase_err,
+            freq=ferr,
+        )
+
+        return self.epoch_errors
 
     def correlate(
         self,
         tap_spacing: float = 0.0,
         nsubcorrelators: int = 2,
         include_subcorrelators: bool = True,
+        include_noise: bool = True,
     ):
         inphase = []
         subinphase = []
@@ -156,8 +157,8 @@ class CorrelatorSimulation:
             )
 
             chip_error = np.array(self.__errors.chip.get(constellation))
-            ferror = np.array(self.__errors.frequency.get(constellation))
-            phase_error = np.array(self.__errors.carrier_phase.get(constellation))
+            ferror = np.array(self.__errors.freq.get(constellation))
+            phase_error = np.array(self.__errors.carr_phase.get(constellation))
 
             subtime_T = np.flip(
                 self.T * np.arange(0, nsubcorrelators) / nsubcorrelators
@@ -175,6 +176,7 @@ class CorrelatorSimulation:
                 ferror=ferror,
                 phase_error=mean_phase_errors,
                 tap_spacing=tap_spacing,
+                include_noise=include_noise,
             )
 
             if include_subcorrelators:
@@ -185,6 +187,7 @@ class CorrelatorSimulation:
                     ferror=ferror,
                     phase_error=subphase_errors,
                     tap_spacing=tap_spacing,
+                    include_noise=include_noise,
                 )
                 subinphase.append(subI)
                 subquadrature.append(subQ)
@@ -220,6 +223,22 @@ class CorrelatorSimulation:
         self.__prange_rate_err_log = defaultdict(lambda: [])
         self.__cphase_err_log = defaultdict(lambda: [])
         self.__carr_prange_err_log = defaultdict(lambda: [])
+
+    def log_errors(self):
+        self.__log_by_emitter(data=self.epoch_errors.chip, log=self.__chip_err_log)
+        self.__log_by_emitter(
+            data=self.epoch_errors.code_prange, log=self.__code_prange_err_log
+        )
+        self.__log_by_emitter(
+            data=self.epoch_errors.carr_phase, log=self.__cphase_err_log
+        )
+        self.__log_by_emitter(
+            data=self.epoch_errors.carr_prange, log=self.__carr_prange_err_log
+        )
+        self.__log_by_emitter(data=self.epoch_errors.freq, log=self.__ferr_log)
+        self.__log_by_emitter(
+            data=self.epoch_errors.prange_rate, log=self.__prange_rate_err_log
+        )
 
     def __compute_cycle_lengths(self, observables: dict):
         chip_length = []

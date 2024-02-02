@@ -7,7 +7,7 @@ from numba import njit
 
 from laika import AstroDog
 from laika.gps_time import GPSTime
-from navtools.conversions import ecef2lla
+from navtools.conversions.coordinates import ecef2lla
 from navtools.constants import SPEED_OF_LIGHT
 
 
@@ -63,11 +63,11 @@ class KlobucharModel(IonosphereModel):
 
     def get_delay(self, params: IonosphereModelParameters):
         gps_time = GPSTime.from_datetime(datetime=params.time)
-        lla = ecef2lla(x=params.rx_pos[0], y=params.rx_pos[1], z=params.rx_pos[2])
+        lla = ecef2lla(params.rx_pos)
 
         delay = compute_klobuchar_delay(
-            lat=lla.lat,
-            lon=lla.lon,
+            lat=lla[0],
+            lon=lla[1],
             az=params.az,
             el=params.el,
             tow=gps_time.tow,
@@ -171,7 +171,7 @@ def compute_saastamoinen_delay(
         sum of wet and dry tropospheric delay [m]
     """
     # TODO: clean this up
-    rx_pos_lla = ecef2lla(x=rx_pos[0], y=rx_pos[1], z=rx_pos[2])
+    rx_pos_lla = ecef2lla(rx_pos)
     if rx_pos_lla[2] < -1e3 or 1e4 < rx_pos_lla[2] or el <= 0:
         return 0.0
 

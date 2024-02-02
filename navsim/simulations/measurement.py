@@ -130,7 +130,9 @@ class MeasurementSimulation(SignalSimulation):
             enumerate(self.__emitter_states),
             total=self.__nperiods,
             desc="[navsim] simulating observables",
-            disable=self.__disable_progress,
+            disable=self.__disable_progress, 
+            ascii='.>#', 
+            bar_format='{desc:<49}{percentage:3.0f}%|{bar:50}| {n_fmt}/{total_fmt} [{rate_fmt}]',
         ):
             code_delays, carrier_delays, drifts = self.__compute_channel_delays(
                 emitters=emitters, pos=self.__rx_states.pos[period]

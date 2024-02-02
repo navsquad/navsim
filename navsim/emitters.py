@@ -229,7 +229,8 @@ class SatelliteEmitters:
             laika_duration_states = [
                 self._dog.get_all_sat_info(time=gps_time)
                 for gps_time in tqdm(
-                    gps_times, desc=laika_desc, disable=self.__disable_progress
+                    gps_times, desc=laika_desc, disable=self.__disable_progress,
+                    ascii='.>#', bar_format='{desc:<49}{percentage:3.0f}%|{bar:50}| {n_fmt}/{total_fmt} [{rate_fmt}]',
                 )
             ]
 
@@ -263,6 +264,8 @@ class SatelliteEmitters:
             desc="[navsim] computing line-of-sight states",
             total=len(datetimes),
             disable=self.__disable_progress,
+            ascii='.>#', 
+            bar_format='{desc:<49}{percentage:3.0f}%|{bar:50}| {n_fmt}/{total_fmt} [{rate_fmt}]',
         ):
             self._time = datetime
             self._gps_time = GPSTime.from_datetime(datetime=datetime)
@@ -537,7 +540,8 @@ class SatelliteEmitters:
                 epoch=epoch,
             )
             for epoch in tqdm(
-                n_times, desc=skyfield_ex_desc, disable=self.__disable_progress
+                n_times, desc=skyfield_ex_desc, disable=self.__disable_progress, 
+                ascii='.>#', bar_format='{desc:<49}{percentage:3.0f}%|{bar:50}| {n_fmt}/{total_fmt} [{rate_fmt}]',
             )
         ]
 

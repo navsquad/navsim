@@ -9,7 +9,7 @@ from collections import defaultdict
 from pyvista.examples import load_globe_texture, download_cubemap_space_16k
 from pyvista.examples.planets import load_earth
 
-from navtools.constants import WGS84_RADIUS
+from navtools.constants import WGS84_R0
 
 
 class SatelliteEmitterVisualizer:
@@ -41,7 +41,7 @@ class SatelliteEmitterVisualizer:
         self._receivers = defaultdict()
 
     def _setup_earth_object(self):
-        self._earth = load_earth(radius=WGS84_RADIUS)
+        self._earth = load_earth(radius=WGS84_R0)
         earth_texture = load_globe_texture()
         self._axes = pv.Axes(show_actor=True)
 

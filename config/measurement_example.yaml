@@ -1,9 +1,11 @@
 time:
-  duration: 3600.0 # [s]
-  fsim: 1 # [Hz]
-  year: 2023
-  month: 10
-  day: 14
+  duration: 281.98 # [s]
+  fsim: 50 # [Hz]
+  year: 2024
+  month: 1
+  day: 31
+  hour: 18
+  minute: 19
   second: 18
 
 constellations:
@@ -11,13 +13,13 @@ constellations:
   emitters:
     gps:
       signal: gpsl1ca
-      js: 0.0
+      js: 5.0
     iridium-next:
       signal: freedom
       js: 0.0
 
 errors:
-  ionosphere: tec_map
+  ionosphere: klobuchar
   troposphere: saastamoinen
   rx_clock: low_quality_tcxo
 

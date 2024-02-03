@@ -1,11 +1,17 @@
 time:
-  duration: 281.98 # [s]
+  # duration: 60 # [s]
+  # fsim: 50 # [Hz]
+  # year: 2024
+  # month: 1
+  # day: 31
+  # hour: 1
+  # minute: 19
+  # second: 18
+  duration: 60.0 # [s]
   fsim: 50 # [Hz]
-  year: 2024
-  month: 1
-  day: 31
-  hour: 18
-  minute: 19
+  year: 2023
+  month: 10
+  day: 14
   second: 18
 
 constellations:

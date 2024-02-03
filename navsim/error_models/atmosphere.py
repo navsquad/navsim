@@ -3,6 +3,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from datetime import datetime
 from dataclasses import dataclass
+from typing import ClassVar
 from numba import njit
 
 from laika import AstroDog
@@ -15,13 +16,13 @@ from navtools.constants import SPEED_OF_LIGHT
 @dataclass
 class IonosphereModelParameters:
     time: datetime
-    rx_pos: np.array
-    emitter_pos: np.array
+    rx_pos: np.ndarray
+    emitter_pos: np.ndarray
     az: float
     el: float
     fcarrier: float
-    alpha: np.array = np.array([2.6768e-08, 4.4914e-09, -3.2658e-07, -5.2153e-07])
-    beta: np.array = np.array([1.3058e05, -1.1203e05, -7.0416e05, -6.4865e06])
+    alpha: ClassVar[np.ndarray[float]] = np.array([2.6768e-08, 4.4914e-09, -3.2658e-07, -5.2153e-07])
+    beta: ClassVar[np.ndarray[float]] = np.array([1.3058e05, -1.1203e05, -7.0416e05, -6.4865e06])
 
 
 class IonosphereModel(ABC):
@@ -175,7 +176,7 @@ def compute_saastamoinen_delay(
     if rx_pos_lla[2] < -1e3 or 1e4 < rx_pos_lla[2] or el <= 0:
         return 0.0
 
-    hgt = 0.0 if rx_pos_lla.alt < 0.0 else rx_pos_lla.alt  # standard atmosphere
+    hgt = 0.0 if rx_pos_lla[2] < 0.0 else rx_pos_lla[2]  # standard atmosphere
 
     pres = 1013.25 * pow(1.0 - 2.2557e-5 * hgt, 5.2568)
     temp = temperature_at_sea_level - 6.5e-3 * hgt + 273.16
@@ -186,7 +187,7 @@ def compute_saastamoinen_delay(
     trph = (
         0.0022768
         * pres
-        / (1.0 - 0.00266 * np.cos(2.0 * rx_pos_lla.lat) - 0.00028 * hgt / 1e3)
+        / (1.0 - 0.00266 * np.cos(2.0 * rx_pos_lla[0]) - 0.00028 * hgt / 1e3)
         / np.cos(z)
     )
     trpw = 0.002277 * (1255.0 / temp + 0.05) * e / np.cos(z)

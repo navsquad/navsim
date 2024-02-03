@@ -10,8 +10,8 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-navtools = {git = "https://github.com/navsquad/navtools.git", rev = "reface"}
-laika = {git = "https://github.com/tannerkoza/laika.git", develop = true}
+navtools = {path = "libs/navtools", develop = true}
+laika = {path = "libs/laika", develop = true}
 pyyaml = "^6.0.1"
 dacite = "^1.8.1"
 pandas = "2.1.1"

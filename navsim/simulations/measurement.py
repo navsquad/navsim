@@ -298,7 +298,7 @@ class MeasurementSimulation(SignalSimulation):
 
         return emitter_states, ephemeris_emitter_states, ephemerides
 
-    def __compute_channel_delays(self, emitters: dict, pos: float):
+    def __compute_channel_delays(self, emitters: dict, pos: np.ndarray):
         code_delays = defaultdict()
         carrier_delays = defaultdict()
         drifts = defaultdict()

@@ -1,0 +1,8 @@
+[submodule "libs/navtools"]
+	path = libs/navtools
+	url = git@github.com:navsquad/navtools.git
+	branch = reface
+[submodule "libs/laika"]
+	path = libs/laika
+	url = https://github.com/tannerkoza/laika.git
+	branch= master

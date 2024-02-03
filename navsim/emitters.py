@@ -386,7 +386,7 @@ class SatelliteEmitters:
         return emitters
 
     def _compute_dop(self, unit_vectors: np.ndarray, nemitters: int):
-        lla = np.radians(nt.ecef2lla(self.rx_pos[0], self.rx_pos[1], self.rx_pos[2]))
+        lla = nt.ecef2lla(self.rx_pos)
         R = np.array(
             [
                 [

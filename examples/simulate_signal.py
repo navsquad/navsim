@@ -16,8 +16,4 @@ sim = ns.get_signal_simulation(
 
 sim.generate_truth(rx_pos=rx_pos)
 sim.simulate()
-
-print(sim.rx_states.clock_bias)
-print(sim.observables[0])
-
 sim.to_hdf(output_dir_path=DATA_PATH)

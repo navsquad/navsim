@@ -39,6 +39,7 @@ class SatelliteEmitterState:
     range_rate: float
     az: float
     el: float
+    uv: np.ndarray
 
 
 class SatelliteEmitters:
@@ -373,6 +374,7 @@ class SatelliteEmitters:
                 range_rate=range_rate,
                 az=emitter_az,
                 el=emitter_el,
+                uv=unit_vector,
             )
             self.emitter_ids.add(emitter_id)
             emitters[emitter_id] = emitter_state

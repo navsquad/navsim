@@ -2,11 +2,12 @@ import os
 import yaml
 import inspect
 import dacite as dc
+import numpy as np
 
 from dataclasses import dataclass, field
 from pathlib import Path
 from tkinter import filedialog as fd
-from typing import Callable
+from typing import Callable, ClassVar
 
 from navtools.signals.signals import SatelliteSignal
 from navtools import get_signal_properties
@@ -21,6 +22,8 @@ try:
     import readline as rl
 except ImportError:
     is_readline_available = False
+    
+from log_utils import *
 
 
 # Configuration Data Classes
@@ -50,6 +53,13 @@ class ErrorConfiguration:
     pseudorange_awgn_sigma: float = 0.0
     carr_psr_awgn_sigma: float = 0.0
     pseudorange_rate_awgn_sigma: float = 0.0
+    
+    
+@dataclass(frozen=True)
+class IMUConfiguration:
+    model: str | None = None
+    osr: int = 10
+    mobility: ClassVar[np.ndarray[float]] = np.array([1.0, 28.5, 114.6])
 
 
 @dataclass
@@ -69,11 +79,12 @@ class SimulationConfiguration:
     time: TimeConfiguration
     constellations: ConstellationsConfiguration
     errors: ErrorConfiguration
+    imu: IMUConfiguration
 
 
 # Configuration Creation
 def get_configuration(configuration_path: str) -> SimulationConfiguration:
-    prompt_string = "[navsim] select a simulation configuration: "
+    prompt_string = default_logger.GenerateSring("[navsim] select a simulation configuration: ", Level.Info, Color.Info)
     if is_readline_available:
         config_file_name = select_file(
             directory_path=configuration_path,
@@ -113,11 +124,17 @@ def get_configuration(configuration_path: str) -> SimulationConfiguration:
         if "errors" not in config.keys():
             config["errors"] = {}  # handles case when no errors section in config
         errors = dc.from_dict(data_class=ErrorConfiguration, data=config.get("errors"))
+        
+        # imu
+        if "imu" not in config.keys():
+            config['imu'] = {}
+        imu = dc.from_dict(data_class=IMUConfiguration, data=config.get("imu"))
 
         return SimulationConfiguration(
             time=time,
             constellations=constellations,
             errors=errors,
+            imu=imu,
         )
 
     except dc.exceptions.WrongTypeError as exc:

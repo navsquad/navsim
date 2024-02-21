@@ -22,6 +22,7 @@ from navtools.common import (
 )
 from navsim.message import package_laika_data
 
+from log_utils import *
 
 @dataclass(repr=False)
 class SatelliteEmitterState:
@@ -225,12 +226,13 @@ class SatelliteEmitters:
             rx_vel = np.zeros_like(rx_pos)
 
         if self._laika_constellations:
-            laika_desc = f"[navsim] extracting {self._laika_string} emitter states"
             laika_duration_states = [
                 self._dog.get_all_sat_info(time=gps_time)
                 for gps_time in tqdm(
-                    gps_times, desc=laika_desc, disable=self.__disable_progress,
-                    ascii='.>#', bar_format='{desc:<49}{percentage:3.0f}%|{bar:50}| {n_fmt}/{total_fmt} [{rate_fmt}]',
+                    gps_times, 
+                    desc=default_logger.GenerateSring(f"[navsim] extracting {self._laika_string} emitter states", Level.Info, Color.Info), 
+                    disable=self.__disable_progress,
+                    ascii='.>#', bar_format='{desc:<100}{percentage:3.0f}%|{bar:50}| {n_fmt}/{total_fmt} [{rate_fmt}]',
                 )
             ]
 
@@ -261,11 +263,11 @@ class SatelliteEmitters:
         self._emitter_states = []
         for datetime, states, pos, vel in tqdm(
             zip(datetimes, emitter_duration_states, rx_pos, rx_vel),
-            desc="[navsim] computing line-of-sight states",
+            desc=default_logger.GenerateSring("[navsim] computing line-of-sight states", Level.Info, Color.Info),
             total=len(datetimes),
             disable=self.__disable_progress,
             ascii='.>#', 
-            bar_format='{desc:<49}{percentage:3.0f}%|{bar:50}| {n_fmt}/{total_fmt} [{rate_fmt}]',
+            bar_format='{desc:<100}{percentage:3.0f}%|{bar:50}| {n_fmt}/{total_fmt} [{rate_fmt}]',
         ):
             self._time = datetime
             self._gps_time = GPSTime.from_datetime(datetime=datetime)
@@ -526,7 +528,6 @@ class SatelliteEmitters:
 
     def _get_multiple_epoch_skyfield_states(self, times):
         emitters = []
-        skyfield_ex_desc = f"[navsim] extracting {self._skyfield_string} emitter states"
 
         ecef_emitters = [
             (emitter.name, emitter.at(times).frame_xyz_and_velocity(itrs))
@@ -540,8 +541,11 @@ class SatelliteEmitters:
                 epoch=epoch,
             )
             for epoch in tqdm(
-                n_times, desc=skyfield_ex_desc, disable=self.__disable_progress, 
-                ascii='.>#', bar_format='{desc:<49}{percentage:3.0f}%|{bar:50}| {n_fmt}/{total_fmt} [{rate_fmt}]',
+                n_times, 
+                desc=default_logger.GenerateSring(f"[navsim] extracting {self._skyfield_string} emitter states", Level.Info, Color.Info), 
+                disable=self.__disable_progress, 
+                ascii='.>#', 
+                bar_format='{desc:<100}{percentage:3.0f}%|{bar:50}| {n_fmt}/{total_fmt} [{rate_fmt}]',
             )
         ]
 

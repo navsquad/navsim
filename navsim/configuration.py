@@ -7,7 +7,7 @@ import numpy as np
 from dataclasses import dataclass, field
 from pathlib import Path
 from tkinter import filedialog as fd
-from typing import Callable, ClassVar
+from typing import Callable
 
 from navtools.signals.signals import SatelliteSignal
 from navtools import get_signal_properties
@@ -59,7 +59,8 @@ class ErrorConfiguration:
 class IMUConfiguration:
     model: str | None = None
     osr: int = 10
-    mobility: ClassVar[np.ndarray[float]] = np.array([1.0, 28.5, 114.6])
+    mobility: list = field(default_factory=lambda: [1.0, 28.5, 114.6])
+    vibration_model: str | None = None
 
 
 @dataclass

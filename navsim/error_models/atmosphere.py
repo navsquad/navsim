@@ -2,7 +2,7 @@ import numpy as np
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import ClassVar
 from numba import njit
 
@@ -21,8 +21,8 @@ class IonosphereModelParameters:
     az: float
     el: float
     fcarrier: float
-    alpha: ClassVar[np.ndarray[float]] = np.array([2.6768e-08, 4.4914e-09, -3.2658e-07, -5.2153e-07])
-    beta: ClassVar[np.ndarray[float]] = np.array([1.3058e05, -1.1203e05, -7.0416e05, -6.4865e06])
+    alpha: np.ndarray = field(default_factory=np.array([2.6768e-08, 4.4914e-09, -3.2658e-07, -5.2153e-07]))
+    beta: np.ndarray = field(default_factory=np.array([1.3058e05, -1.1203e05, -7.0416e05, -6.4865e06]))
 
 
 class IonosphereModel(ABC):

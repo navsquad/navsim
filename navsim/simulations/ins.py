@@ -33,7 +33,7 @@ except ImportError:
   from tkinter import filedialog as fd
 
 from navsim.configuration import select_file
-from navsim.error_models.imu import get_imu_allan_variance_values
+from navsim.error_models.imu import get_imu_allan_variance_values, IMU
 from navsim.configuration import SimulationConfiguration, IMUConfiguration
 from navtools.measurements.radii_of_curvature import radiiOfCurvature
 from navtools.measurements.gravity import nedg
@@ -50,16 +50,36 @@ I3 = np.eye(3)
 
 class INSSimulation:
   @property
-  def ecef_path(self) -> tuple[np.ndarray, np.ndarray]:
-    return self.__ecef_pos, self.__ecef_vel
+  def imu_model(self) -> IMU:
+    return self.__imu_model
   
   @property
-  def specific_force(self):
+  def ecef_position(self) -> np.ndarray:
+    return self.__ecef_pos
+  
+  @property
+  def ecef_velocity(self) -> np.ndarray:
+    return self.__ecef_vel
+  
+  @property
+  def specific_force(self) -> np.ndarray:
+    return self.__meas_spc_frc
+  
+  @property
+  def angular_velocity(self) -> np.ndarray:
+    return self.__meas_ang_vel
+  
+  @property
+  def true_specific_force(self) -> np.ndarray:
     return self.__spc_frc
   
   @property
-  def angular_velocity(self):
+  def true_angular_velocity(self) -> np.ndarray:
     return self.__ang_vel
+  
+  @property
+  def euler_angles(self) -> np.ndarray:
+    return self.__eul_ang
   
   @property
   def geodetic_position(self):
@@ -99,8 +119,9 @@ class INSSimulation:
     else:
       self.__is_error_simulated = True
       self.__imu_model = get_imu_allan_variance_values(config.imu.model)
-    self.__mobility = config.imu.mobility
+    self.__mobility = np.array(config.imu.mobility)
     self.__osr = config.imu.osr
+    self.__vibration_model = config.imu.vibration_model
      
      
 #--------------------------------------------------------------------------------------------------#
@@ -147,9 +168,8 @@ class INSSimulation:
       )
       
     # generate motion parameters from file
-    data = np.genfromtxt(motion_def_file_path, delimiter=',', skip_header=1)
-    self.__init_pva = data[0,:]
-    self.__motion_def = data[2:,:8]
+    self.__init_pva = np.genfromtxt(motion_def_file_path, delimiter=',', skip_header=1, max_rows=1)
+    self.__motion_def = np.genfromtxt(motion_def_file_path, delimiter=',', skip_header=3)
       
   #! === Simulate IMU and Generate Path ===
   def simulate(self) -> None:
@@ -157,7 +177,7 @@ class INSSimulation:
     pos_n = self.__init_pva[:3] * LLA_D2R
     self.__vel_b = self.__init_pva[3:6]
     self.__att = self.__init_pva[6:] * D2R
-    self.__C_b_n = self.__eulzyx2dcm(self.__att).T   # body to nav
+    self.__C_b_n = eulzyx2dcm(self.__att).T   # body to nav
     vel_n = self.__C_b_n @ self.__vel_b
     pos_delta_n = np.zeros(3, dtype=np.float64)
     self.__vel_dot_b = np.zeros(3, dtype=np.float64)
@@ -167,11 +187,11 @@ class INSSimulation:
     
     sim_count = 0
     out_idx = 0
-    self.__mobility[1:] *= D2R
-    out_freq = int(self.__imu_model.freq)
-    sim_freq = self.__osr * out_freq  # simulation frequency
-    dt = 1.0 / sim_freq               # simulation period
-    lla0 = pos_n.copy()
+    self.__mobility[1:] *= D2R            # convert angular acceleration to rad
+    self.__motion_def[:,1:4] *= D2R       # covert angular commands to rad
+    out_freq = int(self.__imu_model.f) # imu frequency
+    sim_freq = self.__osr * out_freq      # simulation frequency
+    dt = 1.0 / sim_freq                   # simulation period
     
     # --- pathgen LPF to smooth trajectory ---
     alpha = 0.9
@@ -188,7 +208,7 @@ class INSSimulation:
     # --- convert time duration commands to maximum number of simulation iterations ---
     sim_count_max = 0
     for i in range(self.__motion_def.shape[0]):
-      seg_count = self.__motion_def[i,7] * out_freq                       # max output iterations for this segment
+      seg_count = self.__motion_def[i,7] * out_freq                  # max output iterations for this segment
       sim_count_max += int(np.ceil(seg_count))                       # add to total length
       self.__motion_def[i,7] = int(np.round(seg_count * self.__osr)) # simulation iterations
       
@@ -249,7 +269,7 @@ class INSSimulation:
           self.__vel_dot_b[self.__vel_dot_b < -max_acc] = -max_acc
 
           att_dot_dot = kp*(att_com - self.__att) + kd*(0 - self.__att_dot) # feedback control
-          att_dot_dot[att_dot_dot > max_dw] = max_dw          # limit w change rate
+          att_dot_dot[att_dot_dot > max_dw] = max_dw                        # limit w change rate
           att_dot_dot[att_dot_dot < -max_dw] = -max_dw
           self.__att_dot = self.__att_dot + att_dot_dot*dt
           self.__att_dot[self.__att_dot > max_w] = max_w                    # limit self.__att change rate
@@ -275,33 +295,122 @@ class INSSimulation:
             spc_frc[out_idx,:] = acc_sum / self.__osr
             ang_vel[out_idx,:] = gyr_sum / self.__osr
           lla_pos[out_idx,:] = (pos_n + pos_delta_n) * LLA_R2D
-          enu_pos[out_idx,:] = lla2enu(pos_n + pos_delta_n, lla0)
+          enu_pos[out_idx,:] = lla2enu(pos_n + pos_delta_n, pos_n)
           enu_vel[out_idx,:] = np.array([vel_n[1], vel_n[0], -vel_n[2]])
           eul_ang[out_idx,:] = wrapEulerAngles(self.__att.copy()[::-1]) * R2D
           ecef_pos[out_idx,:] = lla2ecef(pos_n + pos_delta_n)
-          ecef_vel[out_idx,:] = ned2ecefv(vel_n, lla0)
+          ecef_vel[out_idx,:] = ned2ecefv(vel_n, pos_n)
           acc_sum = np.zeros(3, dtype=np.float64)
           gyr_sum = np.zeros(3, dtype=np.float64)
           out_idx += 1
         
-        # accumulate pos/vel/self.__att change
+        # accumulate pos/vel/att change
         pos_delta_n = pos_delta_n + pos_dot_n*dt # accumulated pos change
         self.__vel_b = self.__vel_b + self.__vel_dot_b*dt
         self.__att = self.__att + self.__att_dot*dt
-        self.__C_b_n = self.__eulzyx2dcm(self.__att).T   # body to nav
+        self.__C_b_n = eulzyx2dcm(self.__att).T   # body to nav
         vel_n = self.__C_b_n @ self.__vel_b
         sim_count += 1
+        
+      # if command is completed, att_dot and vel_dot should be set to zero
+      if com_complete == 1:
+        self.__att_dot = np.zeros(3, dtype=np.float64)
+        self.__vel_dot_b = np.zeros(3, dtype=np.float64)
           
     self.__time = time[:out_idx]
-    self.__spc_frc = spc_frc[:out_idx]
-    self.__ang_vel = ang_vel[:out_idx]
-    self.__lla_pos = lla_pos[:out_idx]
-    self.__enu_pos = enu_pos[:out_idx]
-    self.__enu_vel = enu_vel[:out_idx]
-    self.__eul_ang = eul_ang[:out_idx]
-    self.__ecef_pos = ecef_pos[:out_idx]
-    self.__ecef_vel = ecef_vel[:out_idx]
-
+    self.__spc_frc = spc_frc[:out_idx,:]
+    self.__ang_vel = ang_vel[:out_idx,:]
+    self.__lla_pos = lla_pos[:out_idx,:]
+    self.__enu_pos = enu_pos[:out_idx,:]
+    self.__enu_vel = enu_vel[:out_idx,:]
+    self.__eul_ang = eul_ang[:out_idx,:]
+    self.__ecef_pos = ecef_pos[:out_idx,:]
+    self.__ecef_vel = ecef_vel[:out_idx,:]
+    
+    # finished, add imu noise
+    if self.__is_error_simulated:
+      self.add_noise()
+    else:
+      self.__meas_spc_frc = self.__spc_frc
+      self.__meas_ang_vel = self.__ang_vel
+    
+    
+  def add_noise(self) -> None:
+    """Add error to true IMU readings according to model parameters"""
+    dt = 1 / self.__imu_model.f
+    sqdt = np.sqrt(dt)
+    beta_acc = dt / self.__imu_model.Tc_acc
+    beta_gyr = dt / self.__imu_model.Tc_gyr
+    
+    # accelerometer setup
+    X_acc = np.zeros(6)
+    Y_acc = np.zeros(self.__spc_frc.shape)
+    F_acc = np.array(
+              [[1 - beta_acc[0], 0, 0, 0, 0, 0], 
+               [0, 1, 0, 0, 0, 0],
+               [0, 0, 1 - beta_acc[1], 0, 0, 0],
+               [0, 0, 0, 1, 0, 0],
+               [0, 0, 0, 0, 1 - beta_acc[2], 0],
+               [0, 0, 0, 0, 0, 1]]
+            )
+    G_acc = np.array(
+              [[np.sqrt(1 - np.exp(-2*beta_acc[0])) * self.__imu_model.B_acc[0], 0, 0],
+               [sqdt * self.__imu_model.K_acc[0], 0, 0],
+               [0, np.sqrt(1 - np.exp(-2*beta_acc[1])) * self.__imu_model.B_acc[1], 0],
+               [0, sqdt * self.__imu_model.K_acc[1], 0],
+               [0, 0, np.sqrt(1 - np.exp(-2*beta_acc[2])) * self.__imu_model.B_acc[2]],
+               [0, 0, sqdt * self.__imu_model.K_acc[2]]]
+            )
+    H_acc = np.array(
+              [[1, 1, 0, 0, 0, 0],
+               [0, 0, 1, 1, 0, 0],
+               [0, 0, 0, 0, 1, 1]]
+            )
+    D_acc = np.diag([self.__imu_model.N_acc[0] / sqdt, 
+                     self.__imu_model.N_acc[1] / sqdt, 
+                     self.__imu_model.N_acc[2] / sqdt]
+                    )
+    
+    # gyroscope setup
+    X_gyr = np.zeros(6)
+    Y_gyr = np.zeros(self.__ang_vel.shape)
+    F_gyr = np.array(
+              [[1 - beta_gyr[0], 0, 0, 0, 0, 0], 
+               [0, 1, 0, 0, 0, 0],
+               [0, 0, 1 - beta_gyr[1], 0, 0, 0],
+               [0, 0, 0, 1, 0, 0],
+               [0, 0, 0, 0, 1 - beta_gyr[2], 0],
+               [0, 0, 0, 0, 0, 1]]
+            )
+    G_gyr = np.array(
+              [[np.sqrt(1 - np.exp(-2*beta_gyr[0])) * self.__imu_model.B_gyr[0], 0, 0],
+               [sqdt * self.__imu_model.K_gyr[0], 0, 0],
+               [0, np.sqrt(1 - np.exp(-2*beta_gyr[1])) * self.__imu_model.B_gyr[1], 0],
+               [0, sqdt * self.__imu_model.K_gyr[1], 0],
+               [0, 0, np.sqrt(1 - np.exp(-2*beta_gyr[2])) * self.__imu_model.B_gyr[2]],
+               [0, 0, sqdt * self.__imu_model.K_gyr[2]]]
+            )
+    H_gyr = np.array(
+              [[1, 1, 0, 0, 0, 0],
+               [0, 0, 1, 1, 0, 0],
+               [0, 0, 0, 0, 1, 1]]
+            )
+    D_gyr = np.diag([self.__imu_model.N_gyr[0] / sqdt, 
+                     self.__imu_model.N_gyr[1] / sqdt, 
+                     self.__imu_model.N_gyr[2] / sqdt]
+                    )
+    
+    # exponentially correlated, fixed-variance, first-order, Markov process (Groves 14.85, pg. 593)
+    for k in range(self.__spc_frc.shape[0]):
+      X_acc = F_acc@X_acc + G_acc@np.random.randn(3)
+      Y_acc[k,:] = H_acc@X_acc + D_acc@np.random.randn(3)
+      
+      X_gyr = F_gyr@X_gyr + G_gyr@np.random.randn(3)
+      Y_gyr[k,:] = H_gyr@X_gyr + D_gyr@np.random.randn(3)
+      
+    self.__meas_spc_frc = self.__spc_frc + Y_acc
+    self.__meas_ang_vel = self.__ang_vel + Y_gyr
+    
 
 #--------------------------------------------------------------------------------------------------#\
   def to_hdf(self, output_dir_path: str):
@@ -464,41 +573,42 @@ class INSSimulation:
                         self.__att_dot[0] + self.__C_b_n[2,0]*self.__att_dot[2]],
                         dtype=np.float64)
     
-    vel_dot_n = self.__C_b_n @ self.__vel_dot_b + np.cross(w_nb_n, vel_n)                     # velocity derivative
-    pos_dot_n = np.array([vn/rm_eff, ve/rn_eff/cosphi, -vd], dtype=np.float64)  # position derivative
+    vel_dot_n = self.__C_b_n @ self.__vel_dot_b + np.cross(w_nb_n, vel_n)         # velocity derivative
+    pos_dot_n = np.array([vn/rm_eff, ve/rn_eff/cosphi, -vd], dtype=np.float64)    # position derivative
 
-    gyr = C_n_b @ (w_nb_n + w_en_n + w_ie_n)                          # gyroscope output
+    gyr = C_n_b @ (w_nb_n + w_en_n + w_ie_n)                                      # gyroscope output
     w_ie_b = C_n_b @ w_ie_n
-    acc = self.__vel_dot_b + np.cross(w_ie_b+gyr, self.__vel_b) - C_n_b @ gravity   # accelerometer output
+    acc = self.__vel_dot_b + np.cross(w_ie_b+gyr, self.__vel_b) - C_n_b @ gravity # accelerometer output
 
     return acc, gyr, vel_dot_n, pos_dot_n
     
     
 #--------------------------------------------------------------------------------------------------#
-  def __eulzyx2dcm(self, v: np.ndarray) -> np.ndarray:
-    """convert a set of euler angles (yaw, pitch, roll) into a rotation matrix
-        ZYX rotation of ZYX ordered euler angles
+@njit(cache=True, fastmath=True)
+def eulzyx2dcm(v: np.ndarray) -> np.ndarray:
+  """convert a set of euler angles (yaw, pitch, roll) into a rotation matrix
+      ZYX rotation of ZYX ordered euler angles
 
-    Parameters
-    ----------
-    v : np.ndarray
-        euler angles
+  Parameters
+  ----------
+  v : np.ndarray
+      euler angles
 
-    Returns
-    -------
-    np.ndarray
-        direction cosine matrix
-    """
-    sinpsi, sinth, sinphi = np.sin(v)
-    cospsi, costh, cosphi = np.cos(v)
-    
-    return np.array([[costh*cospsi, \
-                      costh*sinpsi, \
-                      -sinth], \
-                    [sinphi*sinth*cospsi - cosphi*sinpsi, \
-                      sinphi*sinth*sinpsi + cosphi*cospsi, \
-                      costh*sinphi], \
-                    [sinth*cosphi*cospsi + sinpsi*sinphi, \
-                      sinth*cosphi*sinpsi - cospsi*sinphi, \
-                      costh*cosphi]])
+  Returns
+  -------
+  np.ndarray
+      direction cosine matrix
+  """
+  sinpsi, sinth, sinphi = np.sin(v)
+  cospsi, costh, cosphi = np.cos(v)
+  
+  return np.array([[costh*cospsi, \
+                    costh*sinpsi, \
+                    -sinth], \
+                  [sinphi*sinth*cospsi - cosphi*sinpsi, \
+                    sinphi*sinth*sinpsi + cosphi*cospsi, \
+                    costh*sinphi], \
+                  [sinth*cosphi*cospsi + sinpsi*sinphi, \
+                    sinth*cosphi*sinpsi - cospsi*sinphi, \
+                    costh*cosphi]])
   

@@ -23,7 +23,6 @@ class IMU:
 
 
 # TODO: common for B_acc to be in units of [m/s/hr] -> should I account for this?
-# TODO: also for N_acc, common units are [m/s/sqrt(hr)]
 def fix_imu_si_errors(imu: IMU) -> IMU:
   """Corrects IMU errors from spec-sheets into SI units
 
@@ -61,7 +60,7 @@ def fix_imu_si_errors(imu: IMU) -> IMU:
   imu.N_gyr = (imu.N_gyr / 60) * D2R;       # [deg/sqrt(hr)]  ->  [rad/sqrt(s)]
 
   # Rate Random Walk root-PSD rate noise
-  imu.K_acc = (imu.K_acc / (3600*60))       # [(m/s)/(hr*sqrt(hr)] -> [(m/s)/(s*sqrt(s))]
+  imu.K_acc = (imu.K_acc / 3600**(3/2))     # [(m/s)/(hr*sqrt(hr)] -> [(m/s)/(s*sqrt(s))]
   imu.K_gyr = (imu.K_gyr / 60) * D2R;       #  [deg/(hr*sqrt(hr))] ->  [rad/(s*sqrt(s))]
 
   # Dynamic bias instability
@@ -100,7 +99,7 @@ def get_imu_allan_variance_values(imu_name: str) -> IMU:
 #* === Default IMUs ===
 #* Derived from VectorNav -> https://www.vectornav.com/resources/inertial-navigation-primer/specifications--and--error-budgets/specs-inserrorbudget 
 PERFECT = fix_imu_si_errors(IMU(
-  f=150,                                # sampling frequency Hz
+  f=100,                                # sampling frequency Hz
   B_acc=z,                              # accelerometer bias instability coefficients [mg]
   B_gyr=z,                              # gyroscope bias instability coefficients [deg/hr]
   K_acc=z,                              # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
@@ -112,7 +111,7 @@ PERFECT = fix_imu_si_errors(IMU(
 ))
 
 NAVIGATION = fix_imu_si_errors(IMU(
-  f=150,                                # sampling frequency Hz
+  f=100,                                # sampling frequency Hz
   B_acc=np.array([0.01,0.01,0.01]),     # accelerometer bias instability coefficients [mg]
   B_gyr=np.array([0.01,0.01,0.01]),     # gyroscope bias instability coefficients [deg/hr]
   K_acc=np.array([0,0,0]),              # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
@@ -124,7 +123,7 @@ NAVIGATION = fix_imu_si_errors(IMU(
 ))
 
 TACTICAL = fix_imu_si_errors(IMU(
-  f=150,                                # sampling frequency Hz
+  f=100,                                # sampling frequency Hz
   B_acc=np.array([0.1,0.1,0.1]),        # accelerometer bias instability coefficients [mg]
   B_gyr=np.array([1,1,1]),              # gyroscope bias instability coefficients [deg/hr]
   K_acc=np.array([0,0,0]),              # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
@@ -136,7 +135,7 @@ TACTICAL = fix_imu_si_errors(IMU(
 ))
 
 INDUSTRIAL = fix_imu_si_errors(IMU(
-  f=150,                                # sampling frequency Hz
+  f=100,                                # sampling frequency Hz
   B_acc=np.array([1,1,1]),              # accelerometer bias instability coefficients [mg]
   B_gyr=np.array([10,10,10]),           # gyroscope bias instability coefficients [deg/hr]
   K_acc=np.array([0,0,0]),              # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
@@ -148,7 +147,7 @@ INDUSTRIAL = fix_imu_si_errors(IMU(
 ))
 
 CONSUMER = fix_imu_si_errors(IMU(
-  f=150,                                # sampling frequency Hz
+  f=100,                                # sampling frequency Hz
   B_acc=np.array([10,10,10]),           # accelerometer bias instability coefficients [mg]
   B_gyr=np.array([100,100,100]),        # gyroscope bias instability coefficients [deg/hr]
   K_acc=np.array([0,0,0]),              # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
@@ -164,15 +163,15 @@ CONSUMER = fix_imu_si_errors(IMU(
 # Tactical Grade (Honeywell HG1700)
 # https://aerospace.honeywell.com/content/dam/aerobt/en/documents/landing-pages/brochures/N61-1619-000-001-HG1700InertialMeasurementUnit-bro.pdf
 HG1700 = fix_imu_si_errors(IMU(
-  f=500,                                # sampling frequency Hz
-  B_acc=np.array([1,1,1]),              # accelerometer bias instability coefficients [mg]
-  B_gyr=np.array([1,1,1]),              # gyroscope bias instability coefficients [deg/hr]
-  K_acc=np.array([0,0,0]),              # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
-  K_gyr=np.array([0,0,0]),              # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
-  N_acc=np.array([0.65,0.65,0.65])*FT2M,# accelerometer velocity random coefficients [m/s/sqrt(Hz)]
-  N_gyr=np.array([0.125,0.125,0.125]),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
-  Tc_acc=np.array([500,500,500]),       # accelerometer correlation times [s]
-  Tc_gyr=np.array([600,600,600]),       # gyroscope correlation times [s]
+  f=100,                                    # sampling frequency Hz
+  B_acc=np.array([1,1,1]),                  # accelerometer bias instability coefficients [mg]
+  B_gyr=np.array([1,1,1]),                  # gyroscope bias instability coefficients [deg/hr]
+  K_acc=np.array([0,0,0]),                  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
+  K_gyr=np.array([0,0,0]),                  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
+  N_acc=np.array([0.065,0.065,0.065])*FT2M, # accelerometer velocity random coefficients [m/s/sqrt(Hz)]
+  N_gyr=np.array([0.125,0.125,0.125]),      # gyroscope angle random walk coefficients [deg/sqrt(hr)]
+  Tc_acc=np.array([500,500,500]),           # accelerometer correlation times [s]
+  Tc_gyr=np.array([800,800,800]),           # gyroscope correlation times [s]
 ))
 
 # Industrial Grade (VectorNav VN100)
@@ -193,7 +192,7 @@ VN100 = fix_imu_si_errors(IMU(
 # Tactical Grade (e UTC Aerospace Systems SiIMU02)
 # https://datasheet.datasheetarchive.com/originals/crawler/utcaerospacesystems.com/95f6002ae75d6cb1da1af934207206b6.pdf
 SILMU02 = fix_imu_si_errors(IMU(
-  f=250,                                # sampling frequency Hz
+  f=100,                                # sampling frequency Hz
   B_acc=np.array([1,1,1]),              # accelerometer bias instability coefficients [mg]
   B_gyr=np.array([2.5,2.5,2.5]),        # gyroscope bias instability coefficients [deg/hr]
   K_acc=np.array([0,0,0]),              # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]

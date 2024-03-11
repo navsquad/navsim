@@ -3,6 +3,7 @@ import importlib
 import itertools
 import warnings
 import navtools as nt
+from navtools.conversions.coordinates import ecef2lla, ecef2enuDcm
 
 from dataclasses import dataclass
 from tqdm import tqdm
@@ -388,25 +389,26 @@ class SatelliteEmitters:
         return emitters
 
     def _compute_dop(self, unit_vectors: np.ndarray, nemitters: int):
-        lla = nt.ecef2lla(self.rx_pos)
-        R = np.array(
-            [
-                [
-                    -np.sin(lla[1]),
-                    -np.cos(lla[1]) * np.sin(lla[0]),
-                    np.cos(lla[0]) * np.cos(lla[1]),
-                    0,
-                ],
-                [
-                    np.cos(lla[1]),
-                    -np.sin(lla[1]) * np.sin(lla[0]),
-                    np.cos(lla[0]) * np.sin(lla[1]),
-                    0,
-                ],
-                [0, np.cos(lla[0]), np.sin(lla[0]), 0],
-                [0, 0, 0, 1],
-            ]
-        ).T  # ECEF to ENU
+        lla = ecef2lla(self.rx_pos)
+        R = ecef2enuDcm(lla)
+        # R = np.array(
+        #     [
+        #         [
+        #             -np.sin(lla[1]),
+        #             -np.cos(lla[1]) * np.sin(lla[0]),
+        #             np.cos(lla[0]) * np.cos(lla[1]),
+        #             0,
+        #         ],
+        #         [
+        #             np.cos(lla[1]),
+        #             -np.sin(lla[1]) * np.sin(lla[0]),
+        #             np.cos(lla[0]) * np.sin(lla[1]),
+        #             0,
+        #         ],
+        #         [0, np.cos(lla[0]), np.sin(lla[0]), 0],
+        #         [0, 0, 0, 1],
+        #     ]
+        # ).T  # ECEF to ENU
         H = np.append(-unit_vectors, np.ones(nemitters)[..., None], axis=1)
 
         try:

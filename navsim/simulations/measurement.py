@@ -1,3 +1,10 @@
+__all__ = [
+    "EmitterStates",
+    "ReceiverTruthStates",
+    "Observables",
+    "MeasurementSimulation",
+]
+
 import numpy as np
 import pandas as pd
 import pathlib as pl
@@ -11,10 +18,9 @@ from dataclasses import dataclass, replace
 
 from navtools.constants import SPEED_OF_LIGHT
 from navsim.simulations.simulation import SignalSimulation
-from navsim.emitters import SatelliteEmitters
-from navsim.error_models import (
-    get_ionosphere_model,
-    get_troposphere_model,
+from navsim.emitters import Emitters
+from navsim.error_models.atmosphere import get_ionosphere_model, get_troposphere_model
+from navsim.error_models.clock import (
     get_clock_allan_variance_values,
     compute_clock_states,
 )
@@ -31,7 +37,12 @@ from navsim.configuration import (
 )
 from navsim.exceptions import NonexistentTruthStates
 
-from log_utils import *
+# try:
+#     is_log_utils_available = True
+#     from log_utils import *
+# except:
+#     is_log_utils_available = False
+is_log_utils_available = False
 
 
 # Simulation Outputs
@@ -128,13 +139,21 @@ class MeasurementSimulation(SignalSimulation):
 
         self.__rx_states = self.__simulate_receiver_biases()
 
+        if is_log_utils_available:
+            prompt_string = default_logger.GenerateSring(
+                "[navsim] simulating observables ", Level.Info, Color.Info
+            )
+        else:
+            prompt_string = "[navsim] simulating observables "
+
         for period, emitters in tqdm(
             enumerate(self.__emitter_states),
             total=self.__nperiods,
-            desc=default_logger.GenerateSring("[navsim] simulating observables", Level.Info, Color.Info),
-            disable=self.__disable_progress, 
-            ascii='.>#', 
-            bar_format='{desc:<100}{percentage:3.0f}%|{bar:50}| {n_fmt}/{total_fmt} [{rate_fmt}]',
+            desc=prompt_string,
+            disable=self.__disable_progress,
+            ascii=".>#",
+            bar_format="{desc}{percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{rate_fmt}]",
+            ncols=120,
         ):
             code_delays, carrier_delays, drifts = self.__compute_channel_delays(
                 emitters=emitters, pos=self.__rx_states.pos[period]
@@ -226,11 +245,19 @@ class MeasurementSimulation(SignalSimulation):
         ]
 
     def __init_emitters(self, configuration: ConstellationsConfiguration):
-        self.__emitters = SatelliteEmitters(
+        self.__emitters = Emitters(
             constellations=configuration.emitters.keys(),
             mask_angle=configuration.mask_angle,
             disable_progress=self.__disable_progress,
         )
+        # self.__emitters.append(
+        #     TerrestrialEmitters(
+        #         constellations=configuration.emitters.keys(),
+        #         mask_angle=configuration.mask_angle,
+        #         disable_progress=self.__disable_progress,
+        #     )
+        # )
+
         self.__signals = {
             constellation.casefold(): signal
             for constellation, signal in configuration.emitters.items()

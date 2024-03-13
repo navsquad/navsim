@@ -1,9 +1,15 @@
+__all__ = [
+    "SimEmitterState",
+    "Emitters",
+]
+
 import numpy as np
 import importlib
 import itertools
 import warnings
 import navtools as nt
 from navtools.conversions.coordinates import ecef2lla, ecef2enuDcm
+from navtools.parsers.buoy import BuoyParser, Buoy
 
 from dataclasses import dataclass
 from tqdm import tqdm
@@ -23,10 +29,16 @@ from navtools.common import (
 )
 from navsim.message import package_laika_data
 
-from log_utils import *
+# try:
+#     is_log_utils_available = True
+#     from log_utils import *
+# except:
+#     is_log_utils_available = False
+is_log_utils_available = False
+
 
 @dataclass(repr=False)
-class SatelliteEmitterState:
+class SimEmitterState:
     """dataclass that contains states for satellite emitters produced by :class:`navtools.emitters.satellites.SatelliteEmitters`"""
 
     id: str
@@ -43,7 +55,8 @@ class SatelliteEmitterState:
     el: float
 
 
-class SatelliteEmitters:
+# TODO: create emitters 'base' class and allow SatelliteEmitters and TerrestrialEmitters to diverge!
+class Emitters:
     """contains emitters for specified constellations and returns states and observables for given receiver states and time"""
 
     GNSS = {"gps": "G", "glonass": "R", "galileo": "E", "beidou": "C", "qznss": "J"}
@@ -53,6 +66,12 @@ class SatelliteEmitters:
         "globalstar": "GLOBALSTAR",
         "oneweb": "ONEWEB",
         "starlink": "STARLINK",
+    }
+    TERRESTRIAL = {
+        "buoy": "BUOY",
+        "cellular": "CELL",
+        "fm_radio": "FM",
+        "am_radio": "AM",
     }
 
     def __init__(
@@ -147,6 +166,30 @@ class SatelliteEmitters:
             skyfield_states = self._get_single_epoch_skyfield_states(time=time)
             emitter_states.update(skyfield_states)
 
+        #! buoys
+        if "buoy" in self._terrestrial_constellations:
+            # create buoy parser object
+            self.__buoy_parser = BuoyParser(datetime, datetime)
+
+            # grab buoy position and velocity data
+            self.__buoy_parser.grab_data()
+            self.__buoys = self.__buoy_parser.grab_emitters()
+
+            if is_log_utils_available:
+                prompt_string = default_logger.GenerateSring(
+                    f"[navsim] extracting buoy emitter states ",
+                    Level.Info,
+                    Color.Info,
+                )
+            else:
+                prompt_string = f"[navsim] extracting buoy emitter states "
+
+            # create list of dictionaries containing buoy information
+            buoy_states = self.extract_buoy_states(
+                emitters=self.__buoys, epoch=datetime
+            )
+            emitter_states.update(buoy_states)
+
         self._emitter_states = self._compute_los_states(
             emitter_states=emitter_states,
             is_only_visible_emitters=is_only_visible_emitters,
@@ -154,40 +197,40 @@ class SatelliteEmitters:
 
         return self._emitter_states
 
-    def from_gps_time(
-        self,
-        gps_time: GPSTime,
-        rx_pos: np.array,
-        rx_vel: np.array = np.zeros(3),
-        is_only_visible_emitters: bool = True,
-    ) -> dict:
-        """wrapper for :func:`navtools.emitters.satellites.SatelliteEmitters.from_datetime` where `datetime` parameter is `GPSTime`
+    # def from_gps_time(
+    #     self,
+    #     gps_time: GPSTime,
+    #     rx_pos: np.array,
+    #     rx_vel: np.array = np.zeros(3),
+    #     is_only_visible_emitters: bool = True,
+    # ) -> dict:
+    #     """wrapper for :func:`navtools.emitters.satellites.SatelliteEmitters.from_datetime` where `datetime` parameter is `GPSTime`
 
-        Parameters
-        ----------
-        gps_time : GPSTime
-            time/epoch associated with current receiver states
-        rx_pos : np.array
-            receiver position in ECEF reference frame
-        rx_vel : np.array, optional
-            receiver velocity in ECEF reference frame, by default np.zeros(3)
-        is_only_visible_emitters : bool, optional
-            determines whether returned emitters are only those in view, by default True
+    #     Parameters
+    #     ----------
+    #     gps_time : GPSTime
+    #         time/epoch associated with current receiver states
+    #     rx_pos : np.array
+    #         receiver position in ECEF reference frame
+    #     rx_vel : np.array, optional
+    #         receiver velocity in ECEF reference frame, by default np.zeros(3)
+    #     is_only_visible_emitters : bool, optional
+    #         determines whether returned emitters are only those in view, by default True
 
-        Returns
-        -------
-        dict
-            emitter states for a particular time/epoch
-        """
-        datetime = gps_time.as_datetime()
-        emitter_states = self.from_datetime(
-            datetime=datetime,
-            rx_pos=rx_pos,
-            rx_vel=rx_vel,
-            is_only_visible_emitters=is_only_visible_emitters,
-        )
+    #     Returns
+    #     -------
+    #     dict
+    #         emitter states for a particular time/epoch
+    #     """
+    #     datetime = gps_time.as_datetime()
+    #     emitter_states = self.from_datetime(
+    #         datetime=datetime,
+    #         rx_pos=rx_pos,
+    #         rx_vel=rx_vel,
+    #         is_only_visible_emitters=is_only_visible_emitters,
+    #     )
 
-        return emitter_states
+    #     return emitter_states
 
     def from_datetimes(
         self,
@@ -216,6 +259,7 @@ class SatelliteEmitters:
         """
         laika_duration_states = []
         skyfield_duration_states = []
+        buoy_duration_states = []
 
         gps_times = [GPSTime.from_datetime(datetime=datetime) for datetime in datetimes]
 
@@ -227,13 +271,26 @@ class SatelliteEmitters:
             rx_vel = np.zeros_like(rx_pos)
 
         if self._laika_constellations:
+            if is_log_utils_available:
+                prompt_string = default_logger.GenerateSring(
+                    f"[navsim] extracting {self._laika_string} emitter states ",
+                    Level.Info,
+                    Color.Info,
+                )
+            else:
+                prompt_string = (
+                    f"[navsim] extracting {self._laika_string} emitter states "
+                )
+
             laika_duration_states = [
                 self._dog.get_all_sat_info(time=gps_time)
                 for gps_time in tqdm(
-                    gps_times, 
-                    desc=default_logger.GenerateSring(f"[navsim] extracting {self._laika_string} emitter states", Level.Info, Color.Info), 
+                    gps_times,
+                    desc=prompt_string,
                     disable=self.__disable_progress,
-                    ascii='.>#', bar_format='{desc:<100}{percentage:3.0f}%|{bar:50}| {n_fmt}/{total_fmt} [{rate_fmt}]',
+                    ascii=".>#",
+                    bar_format="{desc}{percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{rate_fmt}]",
+                    ncols=120,
                 )
             ]
 
@@ -249,26 +306,86 @@ class SatelliteEmitters:
                 times=times
             )
 
-        if laika_duration_states and skyfield_duration_states:
-            emitter_duration_states = [
-                {**laika_epoch, **skyfield_epoch}
-                for (laika_epoch, skyfield_epoch) in zip(
-                    laika_duration_states, skyfield_duration_states
+        #! buoys
+        if "buoy" in self._terrestrial_constellations:
+            # create buoy parser object
+            self.__buoy_parser = BuoyParser(datetimes[0], datetimes[-1])
+
+            # grab buoy position and velocity data
+            self.__buoy_parser.grab_data()
+            self.__buoys = self.__buoy_parser.grab_emitters()
+
+            if is_log_utils_available:
+                prompt_string = default_logger.GenerateSring(
+                    f"[navsim] extracting buoy emitter states ",
+                    Level.Info,
+                    Color.Info,
+                )
+            else:
+                prompt_string = f"[navsim] extracting buoy emitter states "
+
+            # create list of dictionaries containing buoy information
+            buoy_duration_states = [
+                self.extract_buoy_states(emitters=self.__buoys, epoch=epoch)
+                for epoch in tqdm(
+                    datetimes,
+                    desc=prompt_string,
+                    disable=self.__disable_progress,
+                    ascii=".>#",
+                    bar_format="{desc}{percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{rate_fmt}]",
+                    ncols=120,
                 )
             ]
-        elif laika_duration_states:
+
+        emitter_duration_states = []
+        if laika_duration_states:
             emitter_duration_states = laika_duration_states
-        elif skyfield_duration_states:
-            emitter_duration_states = skyfield_duration_states
+            # emitter_duration_states = [
+            #     {**emitter_epoch, **laika_epoch}
+            #     for (emitter_epoch, laika_epoch) in zip(
+            #         emitter_duration_states, laika_duration_states
+            #     )
+            # ]
+            # emitter_duration_states += laika_duration_states
+        if skyfield_duration_states:
+            if emitter_duration_states:
+                emitter_duration_states = [
+                    {**emitter_epoch, **skyfield_epoch}
+                    for (emitter_epoch, skyfield_epoch) in zip(
+                        emitter_duration_states, skyfield_duration_states
+                    )
+                ]
+            else:
+                emitter_duration_states = skyfield_duration_states
+            # emitter_duration_states += skyfield_duration_states
+        if buoy_duration_states:
+            if emitter_duration_states:
+                emitter_duration_states = [
+                    {**emitter_epoch, **buoy_epoch}
+                    for (emitter_epoch, buoy_epoch) in zip(
+                        emitter_duration_states, buoy_duration_states
+                    )
+                ]
+            else:
+                emitter_duration_states = buoy_duration_states
+            # emitter_duration_states += buoy_duration_states
+
+        if is_log_utils_available:
+            prompt_string = default_logger.GenerateSring(
+                "[navsim] computing line-of-sight states ", Level.Info, Color.Info
+            )
+        else:
+            prompt_string = "[navsim] computing line-of-sight states "
 
         self._emitter_states = []
         for datetime, states, pos, vel in tqdm(
             zip(datetimes, emitter_duration_states, rx_pos, rx_vel),
-            desc=default_logger.GenerateSring("[navsim] computing line-of-sight states", Level.Info, Color.Info),
+            desc=prompt_string,
             total=len(datetimes),
             disable=self.__disable_progress,
-            ascii='.>#', 
-            bar_format='{desc:<100}{percentage:3.0f}%|{bar:50}| {n_fmt}/{total_fmt} [{rate_fmt}]',
+            ascii=".>#",
+            bar_format="{desc}{percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{rate_fmt}]",
+            ncols=120,
         ):
             self._time = datetime
             self._gps_time = GPSTime.from_datetime(datetime=datetime)
@@ -330,31 +447,49 @@ class SatelliteEmitters:
             emitter_clock_bias = emitter_state[2]
             emitter_clock_drift = emitter_state[3]
 
-            is_visible, emitter_az, emitter_el = compute_visibility_status(
-                rx_pos=self._rx_pos,
-                emitter_pos=emitter_pos,
-                mask_angle=self._mask_angle,
-            )
-
-            if is_only_visible_emitters and not is_visible:
-                continue
-
             symbol = self._extract_symbol_from_id(id=emitter_id)
             try:  # removes specialty satellites in constellation
-                if symbol in self._laika_constellations.values():
-                    symbol_index = list(self._laika_constellations.values()).index(
-                        symbol
+                if symbol in self._terrestrial_constellations.values():
+                    is_visible, emitter_az, emitter_el = compute_visibility_status(
+                        rx_pos=emitter_pos,
+                        emitter_pos=self._rx_pos,
+                        mask_angle=self._mask_angle,
                     )
-                    constellation = list(self._laika_constellations.keys())[
+
+                    if is_only_visible_emitters and not is_visible:
+                        continue
+
+                    symbol_index = list(
+                        self._terrestrial_constellations.values()
+                    ).index(symbol)
+                    constellation = list(self._terrestrial_constellations.keys())[
                         symbol_index
                     ]
-                else:
-                    symbol_index = list(self._skyfield_constellations.values()).index(
-                        symbol
+
+                else:  # orbital
+                    is_visible, emitter_az, emitter_el = compute_visibility_status(
+                        rx_pos=self._rx_pos,
+                        emitter_pos=emitter_pos,
+                        mask_angle=self._mask_angle,
                     )
-                    constellation = list(self._skyfield_constellations.keys())[
-                        symbol_index
-                    ]
+
+                    if is_only_visible_emitters and not is_visible:
+                        continue
+
+                    if symbol in self._laika_constellations.values():
+                        symbol_index = list(self._laika_constellations.values()).index(
+                            symbol
+                        )
+                        constellation = list(self._laika_constellations.keys())[
+                            symbol_index
+                        ]
+                    elif symbol in self._skyfield_constellations.values():
+                        symbol_index = list(
+                            self._skyfield_constellations.values()
+                        ).index(symbol)
+                        constellation = list(self._skyfield_constellations.keys())[
+                            symbol_index
+                        ]
             except:
                 continue
 
@@ -366,7 +501,7 @@ class SatelliteEmitters:
             )
             unit_vectors.append(unit_vector)
 
-            emitter_state = SatelliteEmitterState(
+            emitter_state = SimEmitterState(
                 id=emitter_id,
                 gps_time=self._gps_time,
                 datetime=self._time,
@@ -391,24 +526,6 @@ class SatelliteEmitters:
     def _compute_dop(self, unit_vectors: np.ndarray, nemitters: int):
         lla = ecef2lla(self.rx_pos)
         R = ecef2enuDcm(lla)
-        # R = np.array(
-        #     [
-        #         [
-        #             -np.sin(lla[1]),
-        #             -np.cos(lla[1]) * np.sin(lla[0]),
-        #             np.cos(lla[0]) * np.cos(lla[1]),
-        #             0,
-        #         ],
-        #         [
-        #             np.cos(lla[1]),
-        #             -np.sin(lla[1]) * np.sin(lla[0]),
-        #             np.cos(lla[0]) * np.sin(lla[1]),
-        #             0,
-        #         ],
-        #         [0, np.cos(lla[0]), np.sin(lla[0]), 0],
-        #         [0, 0, 0, 1],
-        #     ]
-        # ).T  # ECEF to ENU
         H = np.append(-unit_vectors, np.ones(nemitters)[..., None], axis=1)
 
         try:
@@ -425,7 +542,7 @@ class SatelliteEmitters:
 
         for emitter in self.emitter_ids:
             emitter_constellation = "".join([i for i in emitter if i.isalpha()])
-            if emitter_constellation in SatelliteEmitters.GNSS.values():
+            if emitter_constellation in Emitters.GNSS.values():
                 try:
                     eph = self._dog.get_nav(prn=emitter, time=self._gps_time)
                     eph = package_laika_data(
@@ -433,11 +550,12 @@ class SatelliteEmitters:
                     )
                 except:
                     continue
-            else:
+            elif emitter_constellation in Emitters.LEO.values():
                 for satellite in self._skyfield_satellites:
                     if satellite.name == emitter:
                         eph = satellite.model
-
+            else:
+                eph = []
             ephemerides[emitter] = eph
 
         return ephemerides
@@ -448,25 +566,34 @@ class SatelliteEmitters:
 
         self._laika_constellations = {
             gnss: symbol
-            for gnss, symbol in SatelliteEmitters.GNSS.items()
+            for gnss, symbol in Emitters.GNSS.items()
             for constellation in constellations
             if constellation.casefold() == gnss.casefold()
         }
         self._skyfield_constellations = {
             leo: symbol
-            for leo, symbol in SatelliteEmitters.LEO.items()
+            for leo, symbol in Emitters.LEO.items()
             for constellation in constellations
             if constellation.casefold() == leo.casefold()
+        }
+        self._terrestrial_constellations = {
+            t: symbol
+            for t, symbol in Emitters.TERRESTRIAL.items()
+            for constellation in constellations
+            if constellation.casefold() == t.casefold()
         }
 
         if self._laika_constellations:
             self._laika_string = ", ".join(
                 [const for const in self._laika_constellations]
             )
-
         if self._skyfield_constellations:
             self._skyfield_string = ", ".join(
                 [const for const in self._skyfield_constellations]
+            )
+        if self._terrestrial_constellations:  # unnecessary
+            self._terrestrial_string = ", ".join(
+                [const for const in self._terrestrial_constellations]
             )
 
     def _get_laika_literals(self):
@@ -536,6 +663,17 @@ class SatelliteEmitters:
             for emitter in self._skyfield_satellites
         ]
 
+        if is_log_utils_available:
+            prompt_string = default_logger.GenerateSring(
+                f"[navsim] extracting {self._skyfield_string} emitter states ",
+                Level.Info,
+                Color.Info,
+            )
+        else:
+            prompt_string = (
+                f"[navsim] extracting {self._skyfield_string} emitter states "
+            )
+
         n_times = range(len(times))
         emitters = [
             self._extract_skyfield_states(
@@ -543,11 +681,12 @@ class SatelliteEmitters:
                 epoch=epoch,
             )
             for epoch in tqdm(
-                n_times, 
-                desc=default_logger.GenerateSring(f"[navsim] extracting {self._skyfield_string} emitter states", Level.Info, Color.Info), 
-                disable=self.__disable_progress, 
-                ascii='.>#', 
-                bar_format='{desc:<100}{percentage:3.0f}%|{bar:50}| {n_fmt}/{total_fmt} [{rate_fmt}]',
+                n_times,
+                desc=prompt_string,
+                disable=self.__disable_progress,
+                ascii=".>#",
+                bar_format="{desc}{percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{rate_fmt}]",
+                ncols=120,
             )
         ]
 
@@ -562,6 +701,18 @@ class SatelliteEmitters:
             vel = np.array(emitter_state[1].m_per_s[:, epoch])
             state = [pos, vel, 0.0, 0.0]
             emitters_epoch[emitter_name] = state
+
+        return emitters_epoch
+
+    @staticmethod
+    def extract_buoy_states(emitters: list[Buoy], epoch: datetime):
+        emitters_epoch = defaultdict()
+
+        for e in emitters:
+            pos, vel = e.at(epoch)
+            # state = pos.tolist() + vel.tolist() + [0.0, 0.0]
+            state = [pos, vel, 0.0, 0.0]
+            emitters_epoch[f"BUOY {e.id}"] = state
 
         return emitters_epoch
 

@@ -1,3 +1,14 @@
+__all__ = [
+    "TimeConfiguration",
+    "ConstellationsConfiguration",
+    "ErrorConfiguration",
+    "IMUConfiguration",
+    "SignalConfiguration",
+    "SimulationConfiguration",
+    "get_configuration",
+    "select_file",
+]
+
 import os
 import yaml
 import inspect
@@ -10,7 +21,7 @@ from tkinter import filedialog as fd
 from typing import Callable
 
 from navtools.signals.signals import SatelliteSignal
-from navtools import get_signal_properties
+from navtools.common import get_signal_properties
 from navtools.signals.signals import bpsk_correlator
 from navsim.exceptions import (
     InvalidConfigurationFormatting,
@@ -22,8 +33,13 @@ try:
     import readline as rl
 except ImportError:
     is_readline_available = False
-    
-from log_utils import *
+
+# try:
+#     is_log_utils_available = True
+#     from log_utils import *
+# except:
+#     is_log_utils_available = False
+is_log_utils_available = False
 
 
 # Configuration Data Classes
@@ -53,8 +69,8 @@ class ErrorConfiguration:
     pseudorange_awgn_sigma: float = 0.0
     carr_psr_awgn_sigma: float = 0.0
     pseudorange_rate_awgn_sigma: float = 0.0
-    
-    
+
+
 @dataclass(frozen=True)
 class IMUConfiguration:
     model: str | None = None
@@ -85,7 +101,13 @@ class SimulationConfiguration:
 
 # Configuration Creation
 def get_configuration(configuration_path: str) -> SimulationConfiguration:
-    prompt_string = default_logger.GenerateSring("[navsim] select a simulation configuration: ", Level.Info, Color.Info)
+    if is_log_utils_available:
+        prompt_string = default_logger.GenerateSring(
+            "[navsim] select a simulation configuration: ", Level.Info, Color.Info
+        )
+    else:
+        prompt_string = "[navsim] select a simulation configuration: "
+
     if is_readline_available:
         config_file_name = select_file(
             directory_path=configuration_path,
@@ -125,10 +147,10 @@ def get_configuration(configuration_path: str) -> SimulationConfiguration:
         if "errors" not in config.keys():
             config["errors"] = {}  # handles case when no errors section in config
         errors = dc.from_dict(data_class=ErrorConfiguration, data=config.get("errors"))
-        
+
         # imu
         if "imu" not in config.keys():
-            config['imu'] = {}
+            config["imu"] = {}
         imu = dc.from_dict(data_class=IMUConfiguration, data=config.get("imu"))
 
         return SimulationConfiguration(

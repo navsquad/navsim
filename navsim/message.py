@@ -1,3 +1,5 @@
+__all__ = ["GPSClock", "GPSEphemerides", "GPSIonosphere", "package_laika_data"]
+
 import dacite as dc
 from dataclasses import dataclass, fields
 from collections import defaultdict

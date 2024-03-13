@@ -1,3 +1,5 @@
+__all__ = ["get_signal_simulation"]
+
 from navsim.simulations.measurement import MeasurementSimulation
 from navsim.configuration import SimulationConfiguration
 

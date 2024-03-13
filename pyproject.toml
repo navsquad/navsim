@@ -2,9 +2,11 @@
 name = "navsim"
 version = "0.0.2"
 description = "a python satellite navigation simulator package"
-authors = ["Tanner Koza <kozatanner@gmail.com>",
-           "Daniel Sturdivant <sturdivant20@gmail.com>",
-           "Landon Boyd"]
+authors = [
+  "Tanner Koza <kozatanner@gmail.com>",
+  "Daniel Sturdivant <sturdivant20@gmail.com>",
+  "Landon Boyd",
+]
 license = "MIT"
 readme = "README.md"
 
@@ -12,8 +14,8 @@ readme = "README.md"
 python = ">=3.10,<3.13"
 # navtools = {path = "../navtools", develop = true}
 # laika = {path = "../laika", develop = true}
-navtools = {git = "https://github.com/navsquad/navtools.git", rev = "reface"}
-laika = {git = "https://github.com/tannerkoza/laika.git", rev = "master"}
+navtools = { git = "https://github.com/navsquad/navtools.git", rev = "reface" }
+laika = { git = "https://github.com/tannerkoza/laika.git", rev = "master" }
 pyyaml = "^6.0.1"
 dacite = "^1.8.1"
 pandas = "2.1.1"

@@ -1,3 +1,5 @@
+__all__ = ["SatelliteEmitterVisualizer"]
+
 import pyvista as pv
 import numpy as np
 import pymap3d as pm

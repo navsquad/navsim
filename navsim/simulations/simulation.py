@@ -1,3 +1,5 @@
+__all__ = ["SignalSimulation"]
+
 from abc import ABC, abstractmethod
 from navsim.configuration import SimulationConfiguration
 

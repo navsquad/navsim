@@ -43,12 +43,12 @@ from navtools.conversions.coordinates import lla2enu, lla2ecef, ned2ecefv
 from navtools.conversions.attitude import wrapEulerAngles
 from navtools.constants import GNSS_OMEGA_EARTH
 
-# try:
-#     is_log_utils_available = True
-#     from log_utils import *
-# except:
-#     is_log_utils_available = False
-is_log_utils_available = False
+try:
+    is_log_utils_available = True
+    from log_utils import *
+except:
+    is_log_utils_available = False
+# is_log_utils_available = False
 
 R2D = 180 / np.pi
 D2R = np.pi / 180

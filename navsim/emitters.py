@@ -29,12 +29,12 @@ from navtools.common import (
 )
 from navsim.message import package_laika_data
 
-# try:
-#     is_log_utils_available = True
-#     from log_utils import *
-# except:
-#     is_log_utils_available = False
-is_log_utils_available = False
+try:
+    is_log_utils_available = True
+    from log_utils import *
+except:
+    is_log_utils_available = False
+# is_log_utils_available = False
 
 
 @dataclass(repr=False)

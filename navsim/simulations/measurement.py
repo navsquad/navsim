@@ -37,12 +37,12 @@ from navsim.configuration import (
 )
 from navsim.exceptions import NonexistentTruthStates
 
-# try:
-#     is_log_utils_available = True
-#     from log_utils import *
-# except:
-#     is_log_utils_available = False
-is_log_utils_available = False
+try:
+    is_log_utils_available = True
+    from log_utils import *
+except:
+    is_log_utils_available = False
+# is_log_utils_available = False
 
 
 # Simulation Outputs

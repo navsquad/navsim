@@ -34,16 +34,16 @@ try:
 except ImportError:
     is_readline_available = False
 
-# try:
-#     is_log_utils_available = True
-#     from log_utils import *
-# except:
-#     is_log_utils_available = False
-is_log_utils_available = False
+try:
+    is_log_utils_available = True
+    from log_utils import *
+except:
+    is_log_utils_available = False
+# is_log_utils_available = False
 
 
 # Configuration Data Classes
-@dataclass(frozen=True)
+@dataclass
 class TimeConfiguration:
     duration: float
     fsim: float
@@ -55,13 +55,13 @@ class TimeConfiguration:
     second: int = 0
 
 
-@dataclass(frozen=True)
+@dataclass
 class ConstellationsConfiguration:
     emitters: dict
     mask_angle: float = 10.0
 
 
-@dataclass(frozen=True)
+@dataclass
 class ErrorConfiguration:
     ionosphere: str | None = None
     troposphere: str | None = None
@@ -71,7 +71,7 @@ class ErrorConfiguration:
     pseudorange_rate_awgn_sigma: float = 0.0
 
 
-@dataclass(frozen=True)
+@dataclass
 class IMUConfiguration:
     model: str | None = None
     osr: int = 10
@@ -91,7 +91,7 @@ class SignalConfiguration:
         )
 
 
-@dataclass(frozen=True)
+@dataclass
 class SimulationConfiguration:
     time: TimeConfiguration
     constellations: ConstellationsConfiguration

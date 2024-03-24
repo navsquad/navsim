@@ -49,7 +49,7 @@ class ErrorConfiguration:
     rx_clock: str | None = None
     pseudorange_awgn_sigma: float = 0.0
     carr_psr_awgn_sigma: float = 0.0
-    pseudorange_rate_awgn_sigma: float = 0.0
+    pseudorange_rate_awgn_sigma: bool = False
 
 
 @dataclass

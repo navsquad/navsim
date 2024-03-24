@@ -374,6 +374,14 @@ class MeasurementSimulation(SignalSimulation):
         for emitter, state in emitters.items():
             signal = self.__signals.get(state.constellation.casefold())
 
+            cn0 = compute_carrier_to_noise(
+                range=state.range,
+                transmit_power=signal.properties.transmit_power,
+                transmit_antenna_gain=signal.properties.transmit_antenna_gain,
+                fcarrier=signal.properties.fcarrier,
+                js=signal.js,
+            )
+
             # observables do not include emitter clock terms
             code_pseudorange = (
                 state.range
@@ -387,22 +395,26 @@ class MeasurementSimulation(SignalSimulation):
                 + clock_bias
                 + self.__carr_psr_awgn_sigma * np.random.randn()
             )
+
+            if self.__pseudorange_rate_awgn_sigma:
+                CN0 = 10 ** (cn0 / 10)
+
+                psr_rate_sigma = (
+                    (1 / (np.pi * self.__tsim))
+                    * np.sqrt((10 / CN0))
+                    / (signal.properties.fcarrier / SPEED_OF_LIGHT)
+                )  # FLL with 10 Hz BW
+            else:
+                psr_rate_sigma = 0.0
+
             pseudorange_rate = (
                 state.range_rate
                 + drifts[emitter]
                 + clock_drift
-                + self.__pseudorange_rate_awgn_sigma * np.random.randn()
+                + psr_rate_sigma * np.random.randn()
             )
             carrier_doppler = (
                 -pseudorange_rate * signal.properties.fcarrier / SPEED_OF_LIGHT
-            )
-
-            cn0 = compute_carrier_to_noise(
-                range=state.range,
-                transmit_power=signal.properties.transmit_power,
-                transmit_antenna_gain=signal.properties.transmit_antenna_gain,
-                fcarrier=signal.properties.fcarrier,
-                js=signal.js,
             )
 
             emitter_observables = Observables(

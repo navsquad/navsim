@@ -164,7 +164,7 @@ class CorrelatorSimulation:
                 self.T * np.arange(0, nsubcorrelators) / nsubcorrelators
             )
 
-            # * assumes linear ferror over integration period *
+            # * assumes constant ferror over integration period *
             subphase_deltas = np.array([ferror * T for T in subtime_T])
             subphase_errors = phase_error - subphase_deltas
             mean_phase_errors = np.mean(subphase_errors, axis=0)

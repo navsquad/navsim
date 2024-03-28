@@ -14,24 +14,14 @@ class IMU:
     """dataclass of typical IMU allan variance parameters"""
 
     f: float  # sampling frequency Hz
-    B_acc: np.ndarray = field(
-        default_factory=z
-    )  # accelerometer bias instability coefficients [(m/s)/s]
-    B_gyr: np.ndarray = field(
-        default_factory=z
-    )  # gyroscope bias instability coefficients [rad/s]
+    B_acc: np.ndarray = field(default_factory=z)  # accelerometer bias instability coefficients [(m/s)/s]
+    B_gyr: np.ndarray = field(default_factory=z)  # gyroscope bias instability coefficients [rad/s]
     K_acc: np.ndarray = field(
         default_factory=z
     )  # accelerometer acceleration random walk coefficients [(m/s)/(s*sqrt(s))]
-    K_gyr: np.ndarray = field(
-        default_factory=z
-    )  # gyroscope rate random walk coefficients [rad/(s*sqrt(s))]
-    N_acc: np.ndarray = field(
-        default_factory=z
-    )  # accelerometer velocity random coefficients [(m/s)/sqrt(s)]
-    N_gyr: np.ndarray = field(
-        default_factory=z
-    )  # gyroscope angle random walk coefficients [rad/sqrt(s)]
+    K_gyr: np.ndarray = field(default_factory=z)  # gyroscope rate random walk coefficients [rad/(s*sqrt(s))]
+    N_acc: np.ndarray = field(default_factory=z)  # accelerometer velocity random coefficients [(m/s)/sqrt(s)]
+    N_gyr: np.ndarray = field(default_factory=z)  # gyroscope angle random walk coefficients [rad/sqrt(s)]
     Tc_acc: np.ndarray = field(default_factory=z)  # accelerometer correlation times [s]
     Tc_gyr: np.ndarray = field(default_factory=z)  # gyroscope correlation times [s]
 
@@ -74,9 +64,7 @@ def fix_imu_si_errors(imu: IMU) -> IMU:
     imu.N_gyr = (imu.N_gyr / 60) * D2R  # [deg/sqrt(hr)]  ->  [rad/sqrt(s)]
 
     # Rate Random Walk root-PSD rate noise
-    imu.K_acc = imu.K_acc / 3600 ** (
-        3 / 2
-    )  # [(m/s)/(hr*sqrt(hr)] -> [(m/s)/(s*sqrt(s))]
+    imu.K_acc = imu.K_acc / 3600 ** (3 / 2)  # [(m/s)/(hr*sqrt(hr)] -> [(m/s)/(s*sqrt(s))]
     imu.K_gyr = (imu.K_gyr / 60) * D2R  # [deg/(hr*sqrt(hr))] ->  [rad/(s*sqrt(s))]
 
     # Dynamic bias instability
@@ -132,24 +120,12 @@ PERFECT = fix_imu_si_errors(
 NAVIGATION = fix_imu_si_errors(
     IMU(
         f=100,  # sampling frequency Hz
-        B_acc=np.array(
-            [0.01, 0.01, 0.01]
-        ),  # accelerometer bias instability coefficients [mg]
-        B_gyr=np.array(
-            [0.01, 0.01, 0.01]
-        ),  # gyroscope bias instability coefficients [deg/hr]
-        K_acc=np.array(
-            [0, 0, 0]
-        ),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
-        K_gyr=np.array(
-            [0, 0, 0]
-        ),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
-        N_acc=np.array(
-            [0.01, 0.01, 0.01]
-        ),  # accelerometer velocity random coefficients [m/s/sqrt(hr)]
-        N_gyr=np.array(
-            [0.01, 0.01, 0.01]
-        ),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
+        B_acc=np.array([0.01, 0.01, 0.01]),  # accelerometer bias instability coefficients [mg]
+        B_gyr=np.array([0.01, 0.01, 0.01]),  # gyroscope bias instability coefficients [deg/hr]
+        K_acc=np.array([0, 0, 0]),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
+        K_gyr=np.array([0, 0, 0]),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
+        N_acc=np.array([0.01, 0.01, 0.01]),  # accelerometer velocity random coefficients [m/s/sqrt(hr)]
+        N_gyr=np.array([0.01, 0.01, 0.01]),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
         Tc_acc=np.array([1000, 1000, 1000]),  # accelerometer correlation times [s]
         Tc_gyr=np.array([2000, 2000, 2000]),  # gyroscope correlation times [s]
     )
@@ -158,22 +134,12 @@ NAVIGATION = fix_imu_si_errors(
 TACTICAL = fix_imu_si_errors(
     IMU(
         f=100,  # sampling frequency Hz
-        B_acc=np.array(
-            [0.1, 0.1, 0.1]
-        ),  # accelerometer bias instability coefficients [mg]
+        B_acc=np.array([0.1, 0.1, 0.1]),  # accelerometer bias instability coefficients [mg]
         B_gyr=np.array([1, 1, 1]),  # gyroscope bias instability coefficients [deg/hr]
-        K_acc=np.array(
-            [0, 0, 0]
-        ),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
-        K_gyr=np.array(
-            [0, 0, 0]
-        ),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
-        N_acc=np.array(
-            [0.03, 0.03, 0.03]
-        ),  # accelerometer velocity random coefficients [m/s/sqrt(hr)]
-        N_gyr=np.array(
-            [0.05, 0.05, 0.05]
-        ),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
+        K_acc=np.array([0, 0, 0]),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
+        K_gyr=np.array([0, 0, 0]),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
+        N_acc=np.array([0.03, 0.03, 0.03]),  # accelerometer velocity random coefficients [m/s/sqrt(hr)]
+        N_gyr=np.array([0.05, 0.05, 0.05]),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
         Tc_acc=np.array([500, 500, 500]),  # accelerometer correlation times [s]
         Tc_gyr=np.array([600, 600, 600]),  # gyroscope correlation times [s]
     )
@@ -183,21 +149,11 @@ INDUSTRIAL = fix_imu_si_errors(
     IMU(
         f=100,  # sampling frequency Hz
         B_acc=np.array([1, 1, 1]),  # accelerometer bias instability coefficients [mg]
-        B_gyr=np.array(
-            [10, 10, 10]
-        ),  # gyroscope bias instability coefficients [deg/hr]
-        K_acc=np.array(
-            [0, 0, 0]
-        ),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
-        K_gyr=np.array(
-            [0, 0, 0]
-        ),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
-        N_acc=np.array(
-            [0.1, 0.1, 0.1]
-        ),  # accelerometer velocity random coefficients [m/s/sqrt(hr)]
-        N_gyr=np.array(
-            [0.2, 0.2, 0.2]
-        ),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
+        B_gyr=np.array([10, 10, 10]),  # gyroscope bias instability coefficients [deg/hr]
+        K_acc=np.array([0, 0, 0]),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
+        K_gyr=np.array([0, 0, 0]),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
+        N_acc=np.array([0.1, 0.1, 0.1]),  # accelerometer velocity random coefficients [m/s/sqrt(hr)]
+        N_gyr=np.array([0.2, 0.2, 0.2]),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
         Tc_acc=np.array([100, 100, 100]),  # accelerometer correlation times [s]
         Tc_gyr=np.array([100, 100, 100]),  # gyroscope correlation times [s]
     )
@@ -206,24 +162,12 @@ INDUSTRIAL = fix_imu_si_errors(
 CONSUMER = fix_imu_si_errors(
     IMU(
         f=100,  # sampling frequency Hz
-        B_acc=np.array(
-            [10, 10, 10]
-        ),  # accelerometer bias instability coefficients [mg]
-        B_gyr=np.array(
-            [100, 100, 100]
-        ),  # gyroscope bias instability coefficients [deg/hr]
-        K_acc=np.array(
-            [0, 0, 0]
-        ),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
-        K_gyr=np.array(
-            [0, 0, 0]
-        ),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
-        N_acc=np.array(
-            [1, 1, 1]
-        ),  # accelerometer velocity random coefficients [m/s/sqrt(Hz)]
-        N_gyr=np.array(
-            [2, 2, 2]
-        ),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
+        B_acc=np.array([10, 10, 10]),  # accelerometer bias instability coefficients [mg]
+        B_gyr=np.array([100, 100, 100]),  # gyroscope bias instability coefficients [deg/hr]
+        K_acc=np.array([0, 0, 0]),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
+        K_gyr=np.array([0, 0, 0]),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
+        N_acc=np.array([1, 1, 1]),  # accelerometer velocity random coefficients [m/s/sqrt(Hz)]
+        N_gyr=np.array([2, 2, 2]),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
         Tc_acc=np.array([60, 60, 60]),  # accelerometer correlation times [s]
         Tc_gyr=np.array([60, 60, 60]),  # gyroscope correlation times [s]
     )
@@ -238,17 +182,10 @@ HG1700 = fix_imu_si_errors(
         f=100,  # sampling frequency Hz
         B_acc=np.array([1, 1, 1]),  # accelerometer bias instability coefficients [mg]
         B_gyr=np.array([1, 1, 1]),  # gyroscope bias instability coefficients [deg/hr]
-        K_acc=np.array(
-            [0, 0, 0]
-        ),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
-        K_gyr=np.array(
-            [0, 0, 0]
-        ),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
-        N_acc=np.array([0.065, 0.065, 0.065])
-        * FT2M,  # accelerometer velocity random coefficients [m/s/sqrt(Hz)]
-        N_gyr=np.array(
-            [0.125, 0.125, 0.125]
-        ),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
+        K_acc=np.array([0, 0, 0]),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
+        K_gyr=np.array([0, 0, 0]),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
+        N_acc=np.array([0.065, 0.065, 0.065]) * FT2M,  # accelerometer velocity random coefficients [m/s/sqrt(Hz)]
+        N_gyr=np.array([0.125, 0.125, 0.125]),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
         Tc_acc=np.array([500, 500, 500]),  # accelerometer correlation times [s]
         Tc_gyr=np.array([800, 800, 800]),  # gyroscope correlation times [s]
     )
@@ -260,23 +197,15 @@ HG1700 = fix_imu_si_errors(
 VN100 = fix_imu_si_errors(
     IMU(
         f=100,  # sampling frequency Hz
-        B_acc=np.array(
-            [0.04, 0.04, 0.04]
-        ),  # accelerometer bias instability coefficients [mg]
+        B_acc=np.array([0.04, 0.04, 0.04]),  # accelerometer bias instability coefficients [mg]
         B_gyr=np.array([5, 5, 5]),  # gyroscope bias instability coefficients [deg/hr]
-        K_acc=np.array(
-            [0, 0, 0]
-        ),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
-        K_gyr=np.array(
-            [0, 0, 0]
-        ),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
+        K_acc=np.array([0, 0, 0]),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
+        K_gyr=np.array([0, 0, 0]),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
         N_acc=np.array([0.14, 0.14, 0.14])
         * GRAVITY
         * 1e-3
         * 60,  # accelerometer velocity random coefficients [m/s/sqrt(Hz)]
-        N_gyr=np.array(
-            [0.125, 0.125, 0.125]
-        ),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
+        N_gyr=np.array([0.125, 0.125, 0.125]),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
         Tc_acc=np.array([260, 260, 260]),  # accelerometer correlation times [s]
         Tc_gyr=np.array([256, 256, 256]),  # gyroscope correlation times [s]
     )
@@ -288,21 +217,11 @@ SILMU02 = fix_imu_si_errors(
     IMU(
         f=100,  # sampling frequency Hz
         B_acc=np.array([1, 1, 1]),  # accelerometer bias instability coefficients [mg]
-        B_gyr=np.array(
-            [2.5, 2.5, 2.5]
-        ),  # gyroscope bias instability coefficients [deg/hr]
-        K_acc=np.array(
-            [0, 0, 0]
-        ),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
-        K_gyr=np.array(
-            [0, 0, 0]
-        ),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
-        N_acc=np.array(
-            [0.5, 0.5, 0.5]
-        ),  # accelerometer velocity random coefficients [m/s/sqrt(Hz)]
-        N_gyr=np.array(
-            [0.25, 0.25, 0.25]
-        ),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
+        B_gyr=np.array([2.5, 2.5, 2.5]),  # gyroscope bias instability coefficients [deg/hr]
+        K_acc=np.array([0, 0, 0]),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
+        K_gyr=np.array([0, 0, 0]),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
+        N_acc=np.array([0.5, 0.5, 0.5]),  # accelerometer velocity random coefficients [m/s/sqrt(Hz)]
+        N_gyr=np.array([0.25, 0.25, 0.25]),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
         Tc_acc=np.array([300, 300, 300]),  # accelerometer correlation times [s]
         Tc_gyr=np.array([300, 300, 300]),  # gyroscope correlation times [s]
     )

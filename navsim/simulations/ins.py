@@ -106,9 +106,7 @@ class INSSimulation:
     def time(self):
         return self.__time
 
-    def __init__(
-        self, config: SimulationConfiguration, disable_progress: bool = False
-    ) -> None:
+    def __init__(self, config: SimulationConfiguration, disable_progress: bool = False) -> None:
         # generate output filename
         now = datetime.now().strftime(format="%Y%m%d-%H%M%S")
         sim_now = datetime(
@@ -119,16 +117,15 @@ class INSSimulation:
             minute=config.time.minute,
             second=config.time.second,
         ).strftime(format="%Y%m%d-%H%M%S")
-        self.__output_file_stem = (
-            f"{now}_NAVSIM_{sim_now}_{int(config.time.duration)}_{config.time.fsim}"
-        )
+        self.__output_file_stem = f"{now}_NAVSIM_{sim_now}_{int(config.time.duration)}_{config.time.fsim}"
 
         # tqdm boolean
         self.__disable_progress = disable_progress
 
         # initialize imu errors
-        if config.imu is None:
+        if config.imu is None or config.imu.model.casefold() == "perfect":
             self.__is_error_simulated = False
+            self.__imu_model = get_imu_allan_variance_values("perfect")
         else:
             self.__is_error_simulated = True
             self.__imu_model = get_imu_allan_variance_values(config.imu.model)
@@ -186,12 +183,8 @@ class INSSimulation:
             )
 
         # generate motion parameters from file
-        self.__init_pva = np.genfromtxt(
-            motion_def_file_path, delimiter=",", skip_header=1, max_rows=1
-        )
-        self.__motion_def = np.genfromtxt(
-            motion_def_file_path, delimiter=",", skip_header=3
-        )
+        self.__init_pva = np.genfromtxt(motion_def_file_path, delimiter=",", skip_header=1, max_rows=1)
+        self.__motion_def = np.genfromtxt(motion_def_file_path, delimiter=",", skip_header=3)
 
     #! === Simulate IMU and Generate Path ===
     def simulate(self) -> None:
@@ -230,13 +223,9 @@ class INSSimulation:
         # --- convert time duration commands to maximum number of simulation iterations ---
         sim_count_max = 0
         for i in range(self.__motion_def.shape[0]):
-            seg_count = (
-                self.__motion_def[i, 7] * out_freq
-            )  # max output iterations for this segment
+            seg_count = self.__motion_def[i, 7] * out_freq  # max output iterations for this segment
             sim_count_max += int(np.ceil(seg_count))  # add to total length
-            self.__motion_def[i, 7] = int(
-                np.round(seg_count * self.__osr)
-            )  # simulation iterations
+            self.__motion_def[i, 7] = int(np.round(seg_count * self.__osr))  # simulation iterations
 
         # --- output variables ---
         time = np.zeros(sim_count_max, dtype=np.float64)
@@ -250,9 +239,7 @@ class INSSimulation:
         ecef_vel = np.zeros((sim_count_max, 3), dtype=np.float64)
 
         if is_log_utils_available:
-            prompt_string = default_logger.GenerateSring(
-                "[navsim] ins path generation ", Level.Info, Color.Info
-            )
+            prompt_string = default_logger.GenerateSring("[navsim] ins path generation ", Level.Info, Color.Info)
         else:
             prompt_string = "[navsim] ins path generation "
 
@@ -266,9 +253,7 @@ class INSSimulation:
             bar_format="{desc}{percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{rate_fmt}]",
             ncols=120,
         ):
-            com_type = np.round(
-                self.__motion_def[i, 0]
-            )  # motion command type for this segment
+            com_type = np.round(self.__motion_def[i, 0])  # motion command type for this segment
 
             # parse motion command for this segment
             motion_com = self.__parse_motion_def(self.__motion_def[i, :])
@@ -284,9 +269,7 @@ class INSSimulation:
             vel_com_b_filt = self.__vel_b
 
             # generate trajectory based on command
-            sim_count_max = int(
-                sim_count + self.__motion_def[i, 7]
-            )  # max cycles to execute in this segment
+            sim_count_max = int(sim_count + self.__motion_def[i, 7])  # max cycles to execute in this segment
             com_complete = 0  # completion boolean
             while (sim_count < sim_count_max) and (com_complete == 0):
                 # filter the motion command
@@ -306,29 +289,22 @@ class INSSimulation:
                     self.__vel_dot_b[self.__vel_dot_b > max_acc] = max_acc
                     self.__vel_dot_b[self.__vel_dot_b < -max_acc] = -max_acc
 
-                    att_dot_dot = kp * (att_com - self.__att) + kd * (
-                        0 - self.__att_dot
-                    )  # feedback control
+                    att_dot_dot = kp * (att_com - self.__att) + kd * (0 - self.__att_dot)  # feedback control
                     att_dot_dot[att_dot_dot > max_dw] = max_dw  # limit w change rate
                     att_dot_dot[att_dot_dot < -max_dw] = -max_dw
                     self.__att_dot = self.__att_dot + att_dot_dot * dt
-                    self.__att_dot[self.__att_dot > max_w] = (
-                        max_w  # limit self.__att change rate
-                    )
+                    self.__att_dot[self.__att_dot > max_w] = max_w  # limit self.__att change rate
                     self.__att_dot[self.__att_dot < -max_w] = -max_w
 
                     # check to see if segment command has been completed
                     if (
                         np.linalg.norm(self.__att - att_com) < att_converge_threshold
-                        and np.linalg.norm(self.__vel_b - vel_com_b)
-                        < vel_converge_threshold
+                        and np.linalg.norm(self.__vel_b - vel_com_b) < vel_converge_threshold
                     ):
                         com_complete = 1
 
                 # compute IMU readings based on pos/vel/self.__att changes
-                acc, gyr, _, pos_dot_n = self.__calc_true_sensor_output(
-                    pos_n + pos_delta_n
-                )
+                acc, gyr, _, pos_dot_n = self.__calc_true_sensor_output(pos_n + pos_delta_n)
                 acc_sum = acc_sum + acc
                 gyr_sum = gyr_sum + gyr
 
@@ -383,109 +359,72 @@ class INSSimulation:
 
     def add_noise(self) -> None:
         """Add error to true IMU readings according to model parameters"""
+        n = self.__spc_frc.shape[0]
         dt = 1 / self.__imu_model.f
         sqdt = np.sqrt(dt)
         beta_acc = dt / self.__imu_model.Tc_acc
         beta_gyr = dt / self.__imu_model.Tc_gyr
 
-        # accelerometer setup
-        X_acc = np.zeros(6)
-        Y_acc = np.zeros(self.__spc_frc.shape)
-        F_acc = np.array(
-            [
-                [1 - beta_acc[0], 0, 0, 0, 0, 0],
-                [0, 1, 0, 0, 0, 0],
-                [0, 0, 1 - beta_acc[1], 0, 0, 0],
-                [0, 0, 0, 1, 0, 0],
-                [0, 0, 0, 0, 1 - beta_acc[2], 0],
-                [0, 0, 0, 0, 0, 1],
-            ]
-        )
-        G_acc = np.array(
-            [
-                [
-                    np.sqrt(1 - np.exp(-2 * beta_acc[0])) * self.__imu_model.B_acc[0],
-                    0,
-                    0,
-                ],
-                [sqdt * self.__imu_model.K_acc[0], 0, 0],
-                [
-                    0,
-                    np.sqrt(1 - np.exp(-2 * beta_acc[1])) * self.__imu_model.B_acc[1],
-                    0,
-                ],
-                [0, sqdt * self.__imu_model.K_acc[1], 0],
-                [
-                    0,
-                    0,
-                    np.sqrt(1 - np.exp(-2 * beta_acc[2])) * self.__imu_model.B_acc[2],
-                ],
-                [0, 0, sqdt * self.__imu_model.K_acc[2]],
-            ]
-        )
-        H_acc = np.array([[1, 1, 0, 0, 0, 0], [0, 0, 1, 1, 0, 0], [0, 0, 0, 0, 1, 1]])
-        D_acc = np.diag(
-            [
-                self.__imu_model.N_acc[0] / sqdt,
-                self.__imu_model.N_acc[1] / sqdt,
-                self.__imu_model.N_acc[2] / sqdt,
-            ]
-        )
+        # GNSS-INS-SIM
+        n_gyr = np.zeros((n, 3))
+        n_acc = np.zeros((n, 3))
+        d_gyr = np.zeros((n, 3))
+        d_acc = np.zeros((n, 3))
+        for i in range(3):
+            # white noise
+            n_gyr[:, i] = self.__imu_model.N_gyr[i] / sqdt * np.random.randn(n)
+            n_acc[:, i] = self.__imu_model.N_acc[i] / sqdt * np.random.randn(n)
 
-        # gyroscope setup
-        X_gyr = np.zeros(6)
-        Y_gyr = np.zeros(self.__ang_vel.shape)
-        F_gyr = np.array(
-            [
-                [1 - beta_gyr[0], 0, 0, 0, 0, 0],
-                [0, 1, 0, 0, 0, 0],
-                [0, 0, 1 - beta_gyr[1], 0, 0, 0],
-                [0, 0, 0, 1, 0, 0],
-                [0, 0, 0, 0, 1 - beta_gyr[2], 0],
-                [0, 0, 0, 0, 0, 1],
-            ]
-        )
-        G_gyr = np.array(
-            [
-                [
-                    np.sqrt(1 - np.exp(-2 * beta_gyr[0])) * self.__imu_model.B_gyr[0],
-                    0,
-                    0,
-                ],
-                [sqdt * self.__imu_model.K_gyr[0], 0, 0],
-                [
-                    0,
-                    np.sqrt(1 - np.exp(-2 * beta_gyr[1])) * self.__imu_model.B_gyr[1],
-                    0,
-                ],
-                [0, sqdt * self.__imu_model.K_gyr[1], 0],
-                [
-                    0,
-                    0,
-                    np.sqrt(1 - np.exp(-2 * beta_gyr[2])) * self.__imu_model.B_gyr[2],
-                ],
-                [0, 0, sqdt * self.__imu_model.K_gyr[2]],
-            ]
-        )
-        H_gyr = np.array([[1, 1, 0, 0, 0, 0], [0, 0, 1, 1, 0, 0], [0, 0, 0, 0, 1, 1]])
-        D_gyr = np.diag(
-            [
-                self.__imu_model.N_gyr[0] / sqdt,
-                self.__imu_model.N_gyr[1] / sqdt,
-                self.__imu_model.N_gyr[2] / sqdt,
-            ]
-        )
+            # drift
+            a_gyr = 1 - beta_gyr[i]
+            b_gyr = self.__imu_model.B_gyr[i] * np.sqrt(1.0 - np.exp(-2 * beta_gyr[i]))
+            w_gyr = np.random.randn(n)
+            a_acc = 1 - beta_acc[i]
+            b_acc = self.__imu_model.B_acc[i] * np.sqrt(1.0 - np.exp(-2 * beta_acc[i]))
+            w_acc = np.random.randn(n)
+            for j in range(1, n):
+                d_gyr[j, i] = a_gyr * d_gyr[j - 1, i] + b_gyr * w_gyr[j - 1]
+                d_acc[j, i] = a_acc * d_acc[j - 1, i] + b_acc * w_acc[j - 1]
 
-        # exponentially correlated, fixed-variance, first-order, Markov process (Groves 14.85, pg. 593)
-        for k in range(self.__spc_frc.shape[0]):
-            X_acc = F_acc @ X_acc + G_acc @ np.random.randn(3)
-            Y_acc[k, :] = H_acc @ X_acc + D_acc @ np.random.randn(3)
+        self.__meas_spc_frc = self.__spc_frc + n_acc + d_acc
+        self.__meas_ang_vel = self.__ang_vel + n_gyr + d_gyr
 
-            X_gyr = F_gyr @ X_gyr + G_gyr @ np.random.randn(3)
-            Y_gyr[k, :] = H_gyr @ X_gyr + D_gyr @ np.random.randn(3)
+        # # exponentially correlated, fixed-variance, first-order, Markov process (Groves 14.85, pg. 593)
+        # # A. G. Quinchia et. al, "A Comparison between Different Error Modeling of MEMS Applied to GPS/INS Integrated Systems"
+        # for i in range(3):
+        #     # noise model
+        #     X_acc = np.zeros(2)
+        #     Y_acc = np.zeros(self.__spc_frc.shape)
+        #     F_acc = np.array([[1 - beta_acc[i], 0], [0, 1]])
+        #     G_acc = np.array(
+        #         [np.sqrt(1 - np.exp(-2 * beta_acc[i])) * self.__imu_model.B_acc[i], sqdt * self.__imu_model.K_acc[i]]
+        #     )
+        #     H_acc = np.array([1, 1])
+        #     D_acc = self.__imu_model.N_acc[i] / sqdt
 
-        self.__meas_spc_frc = self.__spc_frc + Y_acc
-        self.__meas_ang_vel = self.__ang_vel + Y_gyr
+        #     X_gyr = np.zeros(2)
+        #     Y_gyr = np.zeros(self.__ang_vel.shape)
+        #     F_gyr = np.array([[1 - beta_gyr[i], 0], [0, 1]])
+        #     G_gyr = np.array(
+        #         [np.sqrt(1 - np.exp(-2 * beta_gyr[i])) * self.__imu_model.B_gyr[i], sqdt * self.__imu_model.K_gyr[i]]
+        #     )
+        #     H_gyr = np.array([1, 1])
+        #     D_gyr = self.__imu_model.N_gyr[i] / sqdt
+
+        #     # noise loop
+        #     w_acc = np.random.randn(n)
+        #     v_acc = np.random.randn(n)
+        #     w_gyr = np.random.randn(n)
+        #     v_gyr = np.random.randn(n)
+        #     for k in range(n):
+        #         X_acc = F_acc @ X_acc + G_acc * w_acc[k]
+        #         Y_acc[k, i] = H_acc @ X_acc + D_acc * v_acc[k]
+
+        #         X_gyr = F_gyr @ X_gyr + G_gyr * w_gyr[k]
+        #         Y_gyr[k, i] = H_gyr @ X_gyr + D_gyr * v_gyr[k]
+
+        # self.__meas_spc_frc = self.__spc_frc + Y_acc
+        # self.__meas_ang_vel = self.__ang_vel + Y_gyr
 
     # --------------------------------------------------------------------------------------------------#\
     def to_hdf(self, output_dir_path: str):
@@ -548,13 +487,9 @@ class INSSimulation:
         imu_meas_df.to_hdf(output_path.with_suffix(".h5"), key="imu_meas", mode="a")
 
         if is_log_utils_available:
-            default_logger.Info(
-                f"[navsim] exported measurement-level results to {output_path.with_suffix('.h5')}"
-            )
+            default_logger.Info(f"[navsim] exported measurement-level results to {output_path.with_suffix('.h5')}")
         else:
-            print(
-                f"[navsim] exported measurement-level results to {output_path.with_suffix('.h5')}"
-            )
+            print(f"[navsim] exported measurement-level results to {output_path.with_suffix('.h5')}")
 
     def to_mat(self, output_dir_path: str):
         output_path = pl.Path(output_dir_path) / self.__output_file_stem
@@ -601,18 +536,12 @@ class INSSimulation:
         )
 
         if is_log_utils_available:
-            default_logger.Info(
-                f"[navsim] exported measurement-level results to {output_path.with_suffix('.mat')}"
-            )
+            default_logger.Info(f"[navsim] exported measurement-level results to {output_path.with_suffix('.mat')}")
         else:
-            print(
-                f"[navsim] exported measurement-level results to {output_path.with_suffix('.mat')}"
-            )
+            print(f"[navsim] exported measurement-level results to {output_path.with_suffix('.mat')}")
 
     # --------------------------------------------------------------------------------------------------#
-    def __parse_motion_def(
-        self, motion_def_seg: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray]:
+    def __parse_motion_def(self, motion_def_seg: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """parse the command of a segment in motion_def
 
         Parameters
@@ -647,9 +576,7 @@ class INSSimulation:
                 vel_com = motion_def_seg[4:7]
         return att_com, vel_com
 
-    def __calc_true_sensor_output(
-        self, pos_n: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def __calc_true_sensor_output(self, pos_n: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Calculate the true IMU measurements based on the attitude/velocity change rates
 
         Parameters
@@ -711,18 +638,12 @@ class INSSimulation:
             dtype=np.float64,
         )
 
-        vel_dot_n = self.__C_b_n @ self.__vel_dot_b + np.cross(
-            w_nb_n, vel_n
-        )  # velocity derivative
-        pos_dot_n = np.array(
-            [vn / rm_eff, ve / rn_eff / cosphi, -vd], dtype=np.float64
-        )  # position derivative
+        vel_dot_n = self.__C_b_n @ self.__vel_dot_b + np.cross(w_nb_n, vel_n)  # velocity derivative
+        pos_dot_n = np.array([vn / rm_eff, ve / rn_eff / cosphi, -vd], dtype=np.float64)  # position derivative
 
         gyr = C_n_b @ (w_nb_n + w_en_n + w_ie_n)  # gyroscope output
         w_ie_b = C_n_b @ w_ie_n
-        acc = (
-            self.__vel_dot_b + np.cross(w_ie_b + gyr, self.__vel_b) - C_n_b @ gravity
-        )  # accelerometer output
+        acc = self.__vel_dot_b + np.cross(w_ie_b + gyr, self.__vel_b) - C_n_b @ gravity  # accelerometer output
 
         return acc, gyr, vel_dot_n, pos_dot_n
 

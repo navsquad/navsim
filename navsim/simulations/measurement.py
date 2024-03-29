@@ -3,6 +3,7 @@ import pandas as pd
 import pathlib as pl
 import scipy.io as sio
 import warnings
+import itertools
 
 from tqdm import tqdm
 from datetime import datetime, timedelta
@@ -23,6 +24,7 @@ from navsim.error_models.atmosphere import (
     IonosphereModelParameters,
     TroposphereModelParameters,
 )
+from numba import njit
 from navsim.configuration import (
     SimulationConfiguration,
     TimeConfiguration,
@@ -469,34 +471,66 @@ class MeasurementSimulation(SignalSimulation):
         for emitter in removed_emitters:
             target_emitters.pop(emitter)
 
-    @staticmethod
-    def perturb_emitter_states(emitter_states: list):
-        perturbed_emitter_states = []
-        pos_bias = 0.5 * np.random.randn(3)
-        vel_bias = 0.15 * np.random.randn(3)
+    def perturb_emitter_states(self, emitter_states: list):
+        perturbed_emitter_states = [defaultdict() for _ in range(len(emitter_states))]
 
-        for states in emitter_states:
-            new_states = defaultdict()
+        all_sv_ids = list(
+            itertools.chain(*[list(states.keys()) for states in emitter_states])
+        )
+        sv_ids, nepochs = np.unique(all_sv_ids, return_counts=True)
 
-            for state in states.values():
-                new_state = replace(state)
+        for sv_id, n in zip(sv_ids, nepochs):
+            xpos_error, xvel_error = compute_tle_errors(
+                sigma=0.0005, tau=4000, T=self.__tsim, size=n
+            )
+            ypos_error, yvel_error = compute_tle_errors(
+                sigma=0.0005, tau=4000, T=self.__tsim, size=n
+            )
+            zpos_error, zvel_error = compute_tle_errors(
+                sigma=0.0005, tau=4000, T=self.__tsim, size=n
+            )
 
-                # clear truth values
-                new_state.az = 0
-                new_state.el = 0
-                new_state.clock_bias = 0
-                new_state.clock_drift = 0
-                new_state.range = 0
-                new_state.range_rate = 0
+            pos_error = np.vstack((xpos_error, ypos_error, zpos_error)).T
+            vel_error = np.vstack((xvel_error, yvel_error, zvel_error)).T
 
-                new_state.pos = (
-                    state.pos + pos_bias + 0.001 * np.random.randn(*state.pos.shape)
-                )
-                new_state.vel = (
-                    state.vel + vel_bias + 0.001 * np.random.randn(*state.vel.shape)
-                )
+            error_epoch_ctr = 0
+            for epoch, sv_states in enumerate(emitter_states):
+                if sv_id in sv_states.keys():
+                    state = sv_states[sv_id]
+                    new_state = replace(state)
 
-                new_states[new_state.id] = new_state
-            perturbed_emitter_states.append(new_states)
+                    # clear truth values
+                    new_state.az = 0
+                    new_state.el = 0
+                    new_state.clock_bias = 0
+                    new_state.clock_drift = 0
+                    new_state.range = 0
+                    new_state.range_rate = 0
+
+                    new_state.pos = state.pos + pos_error[error_epoch_ctr]
+                    new_state.vel = state.vel + vel_error[error_epoch_ctr]
+
+                    perturbed_emitter_states[epoch][new_state.id] = new_state
+
+                    error_epoch_ctr += 1
 
         return perturbed_emitter_states
+
+
+@njit(cache=True)
+def compute_tle_errors(sigma: float, tau: float, T: float, size: int):
+    vel_error = []
+    pos_error = []
+
+    a = np.exp(-T / tau)
+
+    ve = 0.0
+    pe = 0.0
+    for _ in range(int(size)):
+        vel_error.append(ve)
+        pos_error.append(pe)
+
+        ve = a * ve + sigma * np.random.randn()
+        pe += ve * T
+
+    return np.array(pos_error), np.array(vel_error)

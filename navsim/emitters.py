@@ -155,14 +155,10 @@ class Emitters:
             emitter_states.update(laika_states)
 
         if not hasattr(self, "_skyfield_satellites"):
-            self._skyfield_satellites = self._get_skyfield_satellites(
-                first_datetime=datetime
-            )
+            self._skyfield_satellites = self._get_skyfield_satellites(first_datetime=datetime)
 
         if self._skyfield_constellations:
-            time = self._ts.from_datetime(
-                datetime=datetime.replace(tzinfo=timezone.utc)
-            )
+            time = self._ts.from_datetime(datetime=datetime.replace(tzinfo=timezone.utc))
             skyfield_states = self._get_single_epoch_skyfield_states(time=time)
             emitter_states.update(skyfield_states)
 
@@ -185,9 +181,7 @@ class Emitters:
                 prompt_string = f"[navsim] extracting buoy emitter states "
 
             # create list of dictionaries containing buoy information
-            buoy_states = self.extract_buoy_states(
-                emitters=self.__buoys, epoch=datetime
-            )
+            buoy_states = self.extract_buoy_states(emitters=self.__buoys, epoch=datetime)
             emitter_states.update(buoy_states)
 
         self._emitter_states = self._compute_los_states(
@@ -265,22 +259,18 @@ class Emitters:
 
         if rx_pos.size == 3:
             num_epochs = len(datetimes)
-            rx_pos = np.tile(
-                rx_pos, (num_epochs, 1)
-            )  # needed to iterate with states over time
+            rx_pos = np.tile(rx_pos, (num_epochs, 1))  # needed to iterate with states over time
             rx_vel = np.zeros_like(rx_pos)
 
         if self._laika_constellations:
-            if is_log_utils_available:
-                prompt_string = default_logger.GenerateSring(
-                    f"[navsim] extracting {self._laika_string} emitter states ",
-                    Level.Info,
-                    Color.Info,
-                )
-            else:
-                prompt_string = (
-                    f"[navsim] extracting {self._laika_string} emitter states "
-                )
+            # if is_log_utils_available:
+            #     prompt_string = default_logger.GenerateSring(
+            #         f"[navsim] extracting {self._laika_string} emitter states ",
+            #         Level.Info,
+            #         Color.Info,
+            #     )
+            # else:
+            prompt_string = f"[\u001b[35;1mnavsim\u001b[0m] extracting {self._laika_string} emitter states "
 
             laika_duration_states = [
                 self._dog.get_all_sat_info(time=gps_time)
@@ -295,16 +285,10 @@ class Emitters:
             ]
 
         if self._skyfield_constellations:
-            self._skyfield_satellites = self._get_skyfield_satellites(
-                first_datetime=datetimes[0]
-            )
-            utc_datetimes = (
-                datetime.replace(tzinfo=timezone.utc) for datetime in datetimes
-            )
+            self._skyfield_satellites = self._get_skyfield_satellites(first_datetime=datetimes[0])
+            utc_datetimes = (datetime.replace(tzinfo=timezone.utc) for datetime in datetimes)
             times = self._ts.from_datetimes(datetime_list=utc_datetimes)
-            skyfield_duration_states = self._get_multiple_epoch_skyfield_states(
-                times=times
-            )
+            skyfield_duration_states = self._get_multiple_epoch_skyfield_states(times=times)
 
         #! buoys
         if "buoy" in self._terrestrial_constellations:
@@ -315,14 +299,14 @@ class Emitters:
             self.__buoy_parser.grab_data()
             self.__buoys = self.__buoy_parser.grab_emitters()
 
-            if is_log_utils_available:
-                prompt_string = default_logger.GenerateSring(
-                    f"[navsim] extracting buoy emitter states ",
-                    Level.Info,
-                    Color.Info,
-                )
-            else:
-                prompt_string = f"[navsim] extracting buoy emitter states "
+            # if is_log_utils_available:
+            #     prompt_string = default_logger.GenerateSring(
+            #         f"[navsim] extracting buoy emitter states ",
+            #         Level.Info,
+            #         Color.Info,
+            #     )
+            # else:
+            prompt_string = f"[\u001b[35;1mnavsim\u001b[0m] extracting buoy emitter states "
 
             # create list of dictionaries containing buoy information
             buoy_duration_states = [
@@ -351,9 +335,7 @@ class Emitters:
             if emitter_duration_states:
                 emitter_duration_states = [
                     {**emitter_epoch, **skyfield_epoch}
-                    for (emitter_epoch, skyfield_epoch) in zip(
-                        emitter_duration_states, skyfield_duration_states
-                    )
+                    for (emitter_epoch, skyfield_epoch) in zip(emitter_duration_states, skyfield_duration_states)
                 ]
             else:
                 emitter_duration_states = skyfield_duration_states
@@ -362,20 +344,16 @@ class Emitters:
             if emitter_duration_states:
                 emitter_duration_states = [
                     {**emitter_epoch, **buoy_epoch}
-                    for (emitter_epoch, buoy_epoch) in zip(
-                        emitter_duration_states, buoy_duration_states
-                    )
+                    for (emitter_epoch, buoy_epoch) in zip(emitter_duration_states, buoy_duration_states)
                 ]
             else:
                 emitter_duration_states = buoy_duration_states
             # emitter_duration_states += buoy_duration_states
 
-        if is_log_utils_available:
-            prompt_string = default_logger.GenerateSring(
-                "[navsim] computing line-of-sight states ", Level.Info, Color.Info
-            )
-        else:
-            prompt_string = "[navsim] computing line-of-sight states "
+        # if is_log_utils_available:
+        #     prompt_string = default_logger.GenerateSring("[navsim] computing line-of-sight states ", Level.Info, Color.Info)
+        # else:
+        prompt_string = "[\u001b[35;1mnavsim\u001b[0m] computing line-of-sight states "
 
         self._emitter_states = []
         for datetime, states, pos, vel in tqdm(
@@ -431,9 +409,7 @@ class Emitters:
                 new_key = emitter_name
 
             new_epoch[new_key] = epoch[emitter_name]
-            new_epoch[new_key].datetime = emitter_state.datetime.strftime(
-                format="%Y-%m-%d %H:%M:%S"
-            )
+            new_epoch[new_key].datetime = emitter_state.datetime.strftime(format="%Y-%m-%d %H:%M:%S")
 
         return new_epoch
 
@@ -459,12 +435,8 @@ class Emitters:
                     if is_only_visible_emitters and not is_visible:
                         continue
 
-                    symbol_index = list(
-                        self._terrestrial_constellations.values()
-                    ).index(symbol)
-                    constellation = list(self._terrestrial_constellations.keys())[
-                        symbol_index
-                    ]
+                    symbol_index = list(self._terrestrial_constellations.values()).index(symbol)
+                    constellation = list(self._terrestrial_constellations.keys())[symbol_index]
 
                 else:  # orbital
                     is_visible, emitter_az, emitter_el = compute_visibility_status(
@@ -477,28 +449,16 @@ class Emitters:
                         continue
 
                     if symbol in self._laika_constellations.values():
-                        symbol_index = list(self._laika_constellations.values()).index(
-                            symbol
-                        )
-                        constellation = list(self._laika_constellations.keys())[
-                            symbol_index
-                        ]
+                        symbol_index = list(self._laika_constellations.values()).index(symbol)
+                        constellation = list(self._laika_constellations.keys())[symbol_index]
                     elif symbol in self._skyfield_constellations.values():
-                        symbol_index = list(
-                            self._skyfield_constellations.values()
-                        ).index(symbol)
-                        constellation = list(self._skyfield_constellations.keys())[
-                            symbol_index
-                        ]
+                        symbol_index = list(self._skyfield_constellations.values()).index(symbol)
+                        constellation = list(self._skyfield_constellations.keys())[symbol_index]
             except:
                 continue
 
-            range, unit_vector = compute_range_and_unit_vector(
-                rx_pos=self._rx_pos, emitter_pos=emitter_pos
-            )
-            range_rate = compute_range_rate(
-                rx_vel=self._rx_vel, emitter_vel=emitter_vel, unit_vector=unit_vector
-            )
+            range, unit_vector = compute_range_and_unit_vector(rx_pos=self._rx_pos, emitter_pos=emitter_pos)
+            range_rate = compute_range_rate(rx_vel=self._rx_vel, emitter_vel=emitter_vel, unit_vector=unit_vector)
             unit_vectors.append(unit_vector)
 
             emitter_state = SimEmitterState(
@@ -545,9 +505,7 @@ class Emitters:
             if emitter_constellation in Emitters.GNSS.values():
                 try:
                     eph = self._dog.get_nav(prn=emitter, time=self._gps_time)
-                    eph = package_laika_data(
-                        constellation_symbol=emitter_constellation, data=eph.data
-                    )
+                    eph = package_laika_data(constellation_symbol=emitter_constellation, data=eph.data)
                 except:
                     continue
             elif emitter_constellation in Emitters.LEO.values():
@@ -584,17 +542,11 @@ class Emitters:
         }
 
         if self._laika_constellations:
-            self._laika_string = ", ".join(
-                [const for const in self._laika_constellations]
-            )
+            self._laika_string = ", ".join([const for const in self._laika_constellations])
         if self._skyfield_constellations:
-            self._skyfield_string = ", ".join(
-                [const for const in self._skyfield_constellations]
-            )
+            self._skyfield_string = ", ".join([const for const in self._skyfield_constellations])
         if self._terrestrial_constellations:  # unnecessary
-            self._terrestrial_string = ", ".join(
-                [const for const in self._terrestrial_constellations]
-            )
+            self._terrestrial_string = ", ".join([const for const in self._terrestrial_constellations])
 
     def _get_laika_literals(self):
         constellations = self._laika_constellations
@@ -658,21 +610,16 @@ class Emitters:
     def _get_multiple_epoch_skyfield_states(self, times):
         emitters = []
 
-        ecef_emitters = [
-            (emitter.name, emitter.at(times).frame_xyz_and_velocity(itrs))
-            for emitter in self._skyfield_satellites
-        ]
+        ecef_emitters = [(emitter.name, emitter.at(times).frame_xyz_and_velocity(itrs)) for emitter in self._skyfield_satellites]
 
-        if is_log_utils_available:
-            prompt_string = default_logger.GenerateSring(
-                f"[navsim] extracting {self._skyfield_string} emitter states ",
-                Level.Info,
-                Color.Info,
-            )
-        else:
-            prompt_string = (
-                f"[navsim] extracting {self._skyfield_string} emitter states "
-            )
+        # if is_log_utils_available:
+        #     prompt_string = default_logger.GenerateSring(
+        #         f"[navsim] extracting {self._skyfield_string} emitter states ",
+        #         Level.Info,
+        #         Color.Info,
+        #     )
+        # else:
+        prompt_string = f"[\u001b[35;1mnavsim\u001b[0m] extracting {self._skyfield_string} emitter states "
 
         n_times = range(len(times))
         emitters = [

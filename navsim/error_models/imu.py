@@ -1,4 +1,4 @@
-__all__ = ["IMU", "fix_imu_si_errors", "get_imu_allan_variance_values"]
+__all__ = ["IMU", "fix_imu_si_errors", "get_imu_allan_variance_values", "compute_imu_errors"]
 
 
 import numpy as np
@@ -14,16 +14,16 @@ class IMU:
     """dataclass of typical IMU allan variance parameters"""
 
     f: float  # sampling frequency Hz
-    B_acc: np.ndarray = field(default_factory=z)  # accelerometer bias instability coefficients [(m/s)/s]
-    B_gyr: np.ndarray = field(default_factory=z)  # gyroscope bias instability coefficients [rad/s]
+    B_acc: np.ndarray = field(default_factory=lambda: z)  # accelerometer bias instability coefficients [(m/s)/s]
+    B_gyr: np.ndarray = field(default_factory=lambda: z)  # gyroscope bias instability coefficients [rad/s]
     K_acc: np.ndarray = field(
-        default_factory=z
+        default_factory=lambda: z
     )  # accelerometer acceleration random walk coefficients [(m/s)/(s*sqrt(s))]
-    K_gyr: np.ndarray = field(default_factory=z)  # gyroscope rate random walk coefficients [rad/(s*sqrt(s))]
-    N_acc: np.ndarray = field(default_factory=z)  # accelerometer velocity random coefficients [(m/s)/sqrt(s)]
-    N_gyr: np.ndarray = field(default_factory=z)  # gyroscope angle random walk coefficients [rad/sqrt(s)]
-    Tc_acc: np.ndarray = field(default_factory=z)  # accelerometer correlation times [s]
-    Tc_gyr: np.ndarray = field(default_factory=z)  # gyroscope correlation times [s]
+    K_gyr: np.ndarray = field(default_factory=lambda: z)  # gyroscope rate random walk coefficients [rad/(s*sqrt(s))]
+    N_acc: np.ndarray = field(default_factory=lambda: z)  # accelerometer velocity random coefficients [(m/s)/sqrt(s)]
+    N_gyr: np.ndarray = field(default_factory=lambda: z)  # gyroscope angle random walk coefficients [rad/sqrt(s)]
+    Tc_acc: np.ndarray = field(default_factory=lambda: z)  # accelerometer correlation times [s]
+    Tc_gyr: np.ndarray = field(default_factory=lambda: z)  # gyroscope correlation times [s]
 
 
 # TODO: common for B_acc to be in units of [m/s/hr] -> should I account for this?
@@ -99,6 +99,40 @@ def get_imu_allan_variance_values(imu_name: str) -> IMU:
 
     imu_name = "".join([i for i in imu_name if i.isalnum()]).casefold()
     return IMUS.get(imu_name.casefold(), INDUSTRIAL)  # defaults to industrial
+
+
+def compute_imu_errors(n: int, model: IMU):
+    """Add error to true IMU readings according to model parameters"""
+    # n = f.shape[0]
+    dt = 1 / model.f
+    sqdt = np.sqrt(dt)
+    beta_acc = dt / model.Tc_acc
+    beta_gyr = dt / model.Tc_gyr
+
+    # GNSS-INS-SIM
+    n_gyr = np.zeros((n, 3))
+    n_acc = np.zeros((n, 3))
+    d_gyr = np.zeros((n, 3))
+    d_acc = np.zeros((n, 3))
+    for i in range(3):
+        # white noise
+        n_gyr[:, i] = model.N_gyr[i] / sqdt * np.random.randn(n)
+        n_acc[:, i] = model.N_acc[i] / sqdt * np.random.randn(n)
+
+        # drift
+        a_gyr = 1 - beta_gyr[i]
+        b_gyr = model.B_gyr[i] * np.sqrt(1.0 - np.exp(-2.0 * beta_gyr[i]))
+        w_gyr = np.random.randn(n)
+        a_acc = 1 - beta_acc[i]
+        b_acc = model.B_acc[i] * np.sqrt(1.0 - np.exp(-2.0 * beta_acc[i]))
+        w_acc = np.random.randn(n)
+        for j in range(1, n):
+            d_gyr[j, i] = a_gyr * d_gyr[j - 1, i] + b_gyr * w_gyr[j - 1]
+            d_acc[j, i] = a_acc * d_acc[j - 1, i] + b_acc * w_acc[j - 1]
+
+    noise_f = n_acc + d_acc
+    noise_w = n_gyr + d_gyr
+    return noise_w, noise_f
 
 
 # * === Default IMUs ===
@@ -186,8 +220,8 @@ HG1700 = fix_imu_si_errors(
         K_gyr=np.array([0, 0, 0]),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
         N_acc=np.array([0.065, 0.065, 0.065]) * FT2M,  # accelerometer velocity random coefficients [m/s/sqrt(Hz)]
         N_gyr=np.array([0.125, 0.125, 0.125]),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
-        Tc_acc=np.array([500, 500, 500]),  # accelerometer correlation times [s]
-        Tc_gyr=np.array([800, 800, 800]),  # gyroscope correlation times [s]
+        Tc_acc=np.array([100, 100, 100]),  # accelerometer correlation times [s]
+        Tc_gyr=np.array([120, 120, 120]),  # gyroscope correlation times [s]
     )
 )
 
@@ -201,10 +235,7 @@ VN100 = fix_imu_si_errors(
         B_gyr=np.array([5, 5, 5]),  # gyroscope bias instability coefficients [deg/hr]
         K_acc=np.array([0, 0, 0]),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
         K_gyr=np.array([0, 0, 0]),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
-        N_acc=np.array([0.14, 0.14, 0.14])
-        * GRAVITY
-        * 1e-3
-        * 60,  # accelerometer velocity random coefficients [m/s/sqrt(Hz)]
+        N_acc=np.array([0.14, 0.14, 0.14]) * GRAVITY * 1e-3 * 60,  # accelerometer velocity random coefficients [m/s/sqrt(Hz)]
         N_gyr=np.array([0.125, 0.125, 0.125]),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
         Tc_acc=np.array([260, 260, 260]),  # accelerometer correlation times [s]
         Tc_gyr=np.array([256, 256, 256]),  # gyroscope correlation times [s]

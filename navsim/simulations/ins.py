@@ -106,7 +106,7 @@ class INSSimulation:
     def time(self):
         return self.__time
 
-    def __init__(self, config: SimulationConfiguration, disable_progress: bool = False) -> None:
+    def __init__(self, config: SimulationConfiguration, disable_progress: bool = False, use_config_fsim: bool = False) -> None:
         # generate output filename
         now = datetime.now().strftime(format="%Y%m%d-%H%M%S")
         sim_now = datetime(
@@ -129,6 +129,8 @@ class INSSimulation:
         else:
             self.__is_error_simulated = True
             self.__imu_model = get_imu_allan_variance_values(config.imu.model)
+        if use_config_fsim:
+            self.__imu_model.f = config.time.fsim
         self.__mobility = np.array(config.imu.mobility)
         self.__osr = config.imu.osr
         self.__vibration_model = config.imu.vibration_model
@@ -162,9 +164,7 @@ class INSSimulation:
         """
         # select proper file
         if is_log_utils_available:
-            prompt_string = default_logger.GenerateSring(
-                "[navsim] select an IMU motion definition: ", Level.Info, Color.Info
-            )
+            prompt_string = default_logger.GenerateSring("[navsim] select an IMU motion definition: ", Level.Info, Color.Info)
         else:
             prompt_string = "[navsim] select an IMU motion definition: "
 
@@ -238,10 +238,10 @@ class INSSimulation:
         ecef_pos = np.zeros((sim_count_max, 3), dtype=np.float64)
         ecef_vel = np.zeros((sim_count_max, 3), dtype=np.float64)
 
-        if is_log_utils_available:
-            prompt_string = default_logger.GenerateSring("[navsim] ins path generation ", Level.Info, Color.Info)
-        else:
-            prompt_string = "[navsim] ins path generation "
+        # if is_log_utils_available:
+        #     prompt_string = default_logger.GenerateSring("[navsim] ins path generation ", Level.Info, Color.Info)
+        # else:
+        prompt_string = "[\u001b[35;1mnavsim\u001b[0m] ins path generation "
 
         # --- begin simulation loop ---
         for i in tqdm(
@@ -322,7 +322,8 @@ class INSSimulation:
                     enu_vel[out_idx, :] = np.array([vel_n[1], vel_n[0], -vel_n[2]])
                     eul_ang[out_idx, :] = wrapEulerAngles(self.__att.copy()[::-1]) * R2D
                     ecef_pos[out_idx, :] = lla2ecef(pos_n + pos_delta_n)
-                    ecef_vel[out_idx, :] = ned2ecefv(vel_n, pos_n)
+                    # ecef_vel[out_idx, :] = ned2ecefv(vel_n, pos_n)
+                    ecef_vel[out_idx, :] = ned2ecefv(vel_n, pos_n + pos_delta_n)
                     acc_sum = np.zeros(3, dtype=np.float64)
                     gyr_sum = np.zeros(3, dtype=np.float64)
                     out_idx += 1
@@ -377,10 +378,10 @@ class INSSimulation:
 
             # drift
             a_gyr = 1 - beta_gyr[i]
-            b_gyr = self.__imu_model.B_gyr[i] * np.sqrt(1.0 - np.exp(-2 * beta_gyr[i]))
+            b_gyr = self.__imu_model.B_gyr[i] * np.sqrt(1.0 - np.exp(-2.0 * beta_gyr[i]))
             w_gyr = np.random.randn(n)
             a_acc = 1 - beta_acc[i]
-            b_acc = self.__imu_model.B_acc[i] * np.sqrt(1.0 - np.exp(-2 * beta_acc[i]))
+            b_acc = self.__imu_model.B_acc[i] * np.sqrt(1.0 - np.exp(-2.0 * beta_acc[i]))
             w_acc = np.random.randn(n)
             for j in range(1, n):
                 d_gyr[j, i] = a_gyr * d_gyr[j - 1, i] + b_gyr * w_gyr[j - 1]

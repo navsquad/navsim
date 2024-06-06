@@ -35,12 +35,8 @@ class IonosphereModelParameters:
     az: float
     el: float
     fcarrier: float
-    alpha: np.ndarray = field(
-        default_factory=np.array([2.6768e-08, 4.4914e-09, -3.2658e-07, -5.2153e-07])
-    )
-    beta: np.ndarray = field(
-        default_factory=np.array([1.3058e05, -1.1203e05, -7.0416e05, -6.4865e06])
-    )
+    alpha: np.ndarray = field(default_factory=lambda: np.array([2.6768e-08, 4.4914e-09, -3.2658e-07, -5.2153e-07]))
+    beta: np.ndarray = field(default_factory=lambda: np.array([1.3058e05, -1.1203e05, -7.0416e05, -6.4865e06]))
 
 
 class IonosphereModel(ABC):
@@ -167,9 +163,7 @@ class SaastamoinenModel(TroposphereModel):
 
 
 @njit(cache=True)
-def compute_saastamoinen_delay(
-    rx_pos, el, humidity=0.75, temperature_at_sea_level=15.0
-):
+def compute_saastamoinen_delay(rx_pos, el, humidity=0.75, temperature_at_sea_level=15.0):
     """function from RTKlib: https://github.com/tomojitakasu/RTKLIB/blob/master/src/rtkcmn.c#L3362-3362
         with no changes by way of laika: https://github.com/commaai/laika
 
@@ -202,12 +196,7 @@ def compute_saastamoinen_delay(
 
     # /* saastamoninen model */
     z = np.pi / 2.0 - el
-    trph = (
-        0.0022768
-        * pres
-        / (1.0 - 0.00266 * np.cos(2.0 * rx_pos_lla[0]) - 0.00028 * hgt / 1e3)
-        / np.cos(z)
-    )
+    trph = 0.0022768 * pres / (1.0 - 0.00266 * np.cos(2.0 * rx_pos_lla[0]) - 0.00028 * hgt / 1e3) / np.cos(z)
     trpw = 0.002277 * (1255.0 / temp + 0.05) * e / np.cos(z)
     return trph + trpw
 
@@ -256,8 +245,6 @@ def get_troposphere_model(model_name: str):
     TROPOSPHERE_MODELS = {"saastamoinen": SaastamoinenModel()}
 
     model_name = "".join([i for i in model_name if i.isalnum()]).casefold()
-    model = TROPOSPHERE_MODELS.get(
-        model_name.casefold(), SaastamoinenModel()
-    )  # defaults to saastamoinen
+    model = TROPOSPHERE_MODELS.get(model_name.casefold(), SaastamoinenModel())  # defaults to saastamoinen
 
     return model

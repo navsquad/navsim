@@ -4,7 +4,7 @@ R. G. Brown and P. Y. C. Hwang, Introduction to random signals and applied Kalma
 ch. 9.3, pg. 327
 """
 
-__all__ = ["NavigationClock", "compute_clock_states", "get_clock_allan_variance_values"]
+__all__ = ["NavigationClock", "compute_clock_states", "get_clock_allan_variance_values", "compute_clock_states2"]
 
 import numpy as np
 from dataclasses import dataclass
@@ -29,9 +29,7 @@ RUBIDIUM = NavigationClock(h0=2e-22, h1=4.5e-26, h2=1e-30)
 CESIUM = NavigationClock(h0=2e-22, h1=5e-27, h2=1.5e-33)
 
 
-def compute_clock_states(
-    h0: float, h2: float, T: float, nperiods: int = 1
-) -> tuple[np.array, np.array]:
+def compute_clock_states(h0: float, h2: float, T: float, nperiods: int = 1) -> tuple[np.array, np.array]:
     """computes clock bias and drift using two-state clock model for specified period and number of periods
 
     Parameters
@@ -63,9 +61,34 @@ def compute_clock_states(
             [(1 / 2) * sg * T**2, sg * T],
         ]
     )  # [s], [s/s]
-    bias_noise, drift_noise = np.random.multivariate_normal(
-        mean=[0, 0], cov=covariance, size=nperiods
-    ).T
+    bias_noise, drift_noise = np.random.multivariate_normal(mean=[0, 0], cov=covariance, size=nperiods).T
+
+    drift_ss = np.cumsum(drift_noise)
+    bias_s = np.cumsum(drift_ss * T) + np.cumsum(bias_noise)
+
+    drift_ms = drift_ss * SPEED_OF_LIGHT
+    bias_m = bias_s * SPEED_OF_LIGHT
+
+    return bias_m, drift_ms
+
+
+def compute_clock_states2(
+    nperiods: int,
+    T: float,
+    model: NavigationClock,
+) -> tuple[np.array, np.array]:
+    # two-state clock model white noise spectral amplitudes
+    sf = model.h0 / 2
+    sg = model.h2 * 2 * np.pi**2
+
+    # error covariance noise
+    covariance = np.array(
+        [
+            [sf * T + (1 / 3) * sg * T**3, (1 / 2) * sg * T**2],
+            [(1 / 2) * sg * T**2, sg * T],
+        ]
+    )  # [s], [s/s]
+    bias_noise, drift_noise = np.random.multivariate_normal(mean=[0, 0], cov=covariance, size=nperiods).T
 
     drift_ss = np.cumsum(drift_noise)
     bias_s = np.cumsum(drift_ss * T) + np.cumsum(bias_noise)

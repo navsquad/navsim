@@ -174,8 +174,8 @@ TACTICAL = fix_imu_si_errors(
         K_gyr=np.array([0, 0, 0]),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
         N_acc=np.array([0.03, 0.03, 0.03]),  # accelerometer velocity random coefficients [m/s/sqrt(hr)]
         N_gyr=np.array([0.05, 0.05, 0.05]),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
-        Tc_acc=np.array([500, 500, 500]),  # accelerometer correlation times [s]
-        Tc_gyr=np.array([600, 600, 600]),  # gyroscope correlation times [s]
+        Tc_acc=np.array([1000, 1000, 1000]),  # accelerometer correlation times [s]
+        Tc_gyr=np.array([1000, 1000, 1000]),  # gyroscope correlation times [s]
     )
 )
 
@@ -202,8 +202,8 @@ CONSUMER = fix_imu_si_errors(
         K_gyr=np.array([0, 0, 0]),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
         N_acc=np.array([1, 1, 1]),  # accelerometer velocity random coefficients [m/s/sqrt(Hz)]
         N_gyr=np.array([2, 2, 2]),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
-        Tc_acc=np.array([60, 60, 60]),  # accelerometer correlation times [s]
-        Tc_gyr=np.array([60, 60, 60]),  # gyroscope correlation times [s]
+        Tc_acc=np.array([1, 1, 1]),  # accelerometer correlation times [s]
+        Tc_gyr=np.array([1, 1, 1]),  # gyroscope correlation times [s]
     )
 )
 
@@ -235,7 +235,10 @@ VN100 = fix_imu_si_errors(
         B_gyr=np.array([5, 5, 5]),  # gyroscope bias instability coefficients [deg/hr]
         K_acc=np.array([0, 0, 0]),  # accelerometer acceleration random walk coefficients [(m/s)/(hr*sqrt(hr)]
         K_gyr=np.array([0, 0, 0]),  # gyroscope rate random walk coefficients [deg/(hr*sqrt(hr))]
-        N_acc=np.array([0.14, 0.14, 0.14]) * GRAVITY * 1e-3 * 60,  # accelerometer velocity random coefficients [m/s/sqrt(Hz)]
+        N_acc=np.array([0.14, 0.14, 0.14])
+        * GRAVITY
+        * 1e-3
+        * 60,  # accelerometer velocity random coefficients [m/s/sqrt(Hz)]
         N_gyr=np.array([0.125, 0.125, 0.125]),  # gyroscope angle random walk coefficients [deg/sqrt(hr)]
         Tc_acc=np.array([260, 260, 260]),  # accelerometer correlation times [s]
         Tc_gyr=np.array([256, 256, 256]),  # gyroscope correlation times [s]
